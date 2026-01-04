@@ -8,7 +8,7 @@
 		FillLayer
 	} from 'svelte-maplibre-gl'
 	import type { FeatureCollection } from 'geojson'
-	import NepalData from './pulchowk.json'
+	import NepalData from './nepal.json'
 
 	const nepal = NepalData as FeatureCollection
 </script>
