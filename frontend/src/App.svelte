@@ -6,11 +6,7 @@
 		query,
 		goto
 	} from '@mateothegreat/svelte5-router'
-	import Home from './pages/Home.svelte'
-	import Register from './pages/Register.svelte'
-	import Dashboard from './pages/Dashboard.svelte'
 	import { authClient } from './lib/auth-client'
-	import Map from './pages/Map.svelte'
 
 	const session = authClient.useSession()
 
@@ -21,19 +17,19 @@
 
 	const routes: RouteConfig[] = [
 		{
-			component: Home
+			component: async () => await import('./pages/Home.svelte')
 		},
 		{
 			path: 'register',
-			component: Register
+			component: async () => await import('./pages/Register.svelte')
 		},
 		{
 			path: 'dashboard',
-			component: Dashboard
+			component: async () => await import('./pages/Dashboard.svelte')
 		},
 		{
 			path: 'map',
-			component: Map
+			component: async () => await import('./pages/Map.svelte')
 		}
 	]
 </script>
