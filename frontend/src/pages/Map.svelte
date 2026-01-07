@@ -39,8 +39,10 @@
 		],
 	};
 
-	const VECTOR_STYLE =
-		"https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+	const PULCHOWK_BOUNDS = [
+		[85.31217093201366, 27.678215308346253],
+		[85.329947502668, 27.686583278518555],
+	];
 
 	const pulchowkData = pulchowk as FeatureCollection;
 
@@ -145,6 +147,28 @@
 	}>({ title: "", description: "" });
 
 	let currentImageIndex = $state(0);
+	let showOutsideMessage = $state(false);
+
+	function handleGeolocate(e: any) {
+		const { coords } = e;
+		const { longitude, latitude } = coords;
+
+		const [sw, ne] = PULCHOWK_BOUNDS;
+		const [minLng, minLat] = sw;
+		const [maxLng, maxLat] = ne;
+
+		if (
+			longitude < minLng ||
+			longitude > maxLng ||
+			latitude < minLat ||
+			latitude > maxLat
+		) {
+			showOutsideMessage = true;
+			setTimeout(() => {
+				showOutsideMessage = false;
+			}, 4000);
+		}
+	}
 
 	const icons = [
 		{
@@ -616,6 +640,28 @@
 		</div>
 	</div>
 
+	{#if showOutsideMessage}
+		<div
+			class="absolute top-24 left-1/2 -translate-x-1/2 z-50 bg-red-500/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap"
+			transition:fly={{ y: -20, duration: 300 }}
+		>
+			<svg
+				class="w-5 h-5"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+				/>
+			</svg>
+			You are outside the Pulchowk Campus area
+		</div>
+	{/if}
+
 	{#if !isLoaded}
 		<div
 			class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-50/80 backdrop-blur-sm"
@@ -652,7 +698,9 @@
 		maxZoom={isSatellite ? 18.4 : 22}
 		center={mapCenter}
 		class="w-full h-full"
-		style={isSatellite ? SATELLITE_STYLE : VECTOR_STYLE}
+		style={isSatellite
+			? SATELLITE_STYLE
+			: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json?"}
 		onclick={(e) => {
 			const latitude = e.lngLat.lat;
 			const longitude = e.lngLat.lng;
@@ -778,10 +826,10 @@
 									<img
 										src={img}
 										alt={popupData.title}
-										class="absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-300 {i ===
-										currentImageIndex
-											? 'opacity-100'
-											: 'opacity-0'}"
+										class="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300 ease-in-out"
+										style="transform: translateX({(i -
+											currentImageIndex) *
+											100}%)"
 									/>
 								{/each}
 
@@ -892,6 +940,7 @@
 			trackUserLocation={true}
 			showAccuracyCircle={true}
 			fitBoundsOptions={{ zoom: 18 }}
+			ongeolocate={handleGeolocate}
 		/>
 
 		<FullScreenControl position="top-right" />
