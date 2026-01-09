@@ -7,8 +7,10 @@
 		FillLayer,
 		SymbolLayer,
 		Popup,
+		LineLayer,
+		CircleLayer,
 	} from "svelte-maplibre-gl";
-	import type { FeatureCollection } from "geojson";
+	import type { FeatureCollection, Feature } from "geojson";
 	import pulchowk from "./pulchowk.json";
 	import { fade, fly } from "svelte/transition";
 	import LoadingSpinner from "../components/LoadingSpinner.svelte";
@@ -147,6 +149,31 @@
 	let currentImageIndex = $state(0);
 	let showOutsideMessage = $state(false);
 	let geolocateControl: any = $state();
+	let userLocation = $state<[number, number] | null>(null);
+
+	// Navigation State
+	let isNavigating = $state(false);
+	let startPoint = $state<{
+		coords: [number, number];
+		name: string;
+		feature?: any;
+	} | null>(null);
+	let endPoint = $state<{
+		coords: [number, number];
+		name: string;
+		feature?: any;
+	} | null>(null);
+	let routeGeoJSON = $state<any>(null);
+	let routeDistance = $state<string>("");
+	let routeDuration = $state<string>("");
+	let isDirectFallback = $state(false);
+
+	// Navigation Search State
+	let navStartSearch = $state("");
+	let navEndSearch = $state("");
+	let showNavStartSuggestions = $state(false);
+	let showNavEndSuggestions = $state(false);
+	let waitingForLocation = $state(false); // Add this line
 
 	function handleGeolocate(e: any) {
 		console.log("Geolocate event:", e);
@@ -154,6 +181,12 @@
 
 		const { coords } = e;
 		const { longitude, latitude } = coords;
+		userLocation = [longitude, latitude];
+
+		if (waitingForLocation) {
+			useUserLocation();
+			waitingForLocation = false;
+		}
 
 		const [sw, ne] = PULCHOWK_BOUNDS;
 		const [minLng, minLat] = sw;
@@ -176,6 +209,304 @@
 			setTimeout(() => {
 				showOutsideMessage = false;
 			}, 4000);
+		}
+	}
+
+	function getCentroid(feature: any): [number, number] {
+		if (feature.geometry.type === "Point") {
+			return feature.geometry.coordinates as [number, number];
+		} else if (feature.geometry.type === "Polygon") {
+			const coordinates = feature.geometry.coordinates[0];
+			const centroid = coordinates.reduce(
+				(acc: any, coord: any) => {
+					acc[0] += coord[0];
+					acc[1] += coord[1];
+					return acc;
+				},
+				[0, 0],
+			);
+			centroid[0] /= coordinates.length;
+			centroid[1] /= coordinates.length;
+			return centroid as [number, number];
+		}
+		return [0, 0];
+	}
+
+	function getHaversineDistance(
+		coord1: [number, number],
+		coord2: [number, number],
+	) {
+		const R = 6371e3; // metres
+		const φ1 = (coord1[1] * Math.PI) / 180; // φ, λ in radians
+		const φ2 = (coord2[1] * Math.PI) / 180;
+		const Δφ = ((coord2[1] - coord1[1]) * Math.PI) / 180;
+		const Δλ = ((coord2[0] - coord1[0]) * Math.PI) / 180;
+
+		const a =
+			Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+			Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+		const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+		return R * c;
+	}
+
+	function createStraightLineRoute(
+		start: [number, number],
+		end: [number, number],
+		distance: number,
+	) {
+		isDirectFallback = true;
+		routeGeoJSON = {
+			type: "Feature",
+			geometry: {
+				type: "LineString",
+				coordinates: [start, end],
+			},
+		};
+
+		const walkingSpeed = 1.4; // m/s (approx 5 km/h)
+		const duration = Math.round(distance / walkingSpeed / 60);
+
+		routeDuration = `${duration || 1} min`;
+		routeDistance =
+			distance < 1000
+				? `${Math.round(distance)} m`
+				: `${(distance / 1000).toFixed(1)} km`;
+
+		fitBoundsToRoute([start, end]);
+	}
+
+	function fitBoundsToRoute(coords: number[][]) {
+		if (map) {
+			let minLng = coords[0][0],
+				minLat = coords[0][1],
+				maxLng = coords[0][0],
+				maxLat = coords[0][1];
+			for (const c of coords) {
+				if (c[0] < minLng) minLng = c[0];
+				if (c[0] > maxLng) maxLng = c[0];
+				if (c[1] < minLat) minLat = c[1];
+				if (c[1] > maxLat) maxLat = c[1];
+			}
+
+			map.fitBounds(
+				[
+					[minLng, minLat],
+					[maxLng, maxLat],
+				],
+				{ padding: 100 },
+			);
+		}
+	}
+
+	function getNearestVertex(
+		feature: any,
+		target: [number, number],
+	): [number, number] {
+		if (!feature || feature.geometry.type !== "Polygon")
+			return feature?.geometry?.coordinates || target;
+
+		const coords = feature.geometry.coordinates[0];
+		let minDist = Infinity;
+		let bestCoord = coords[0];
+
+		for (const coord of coords) {
+			const dist =
+				Math.pow(coord[0] - target[0], 2) +
+				Math.pow(coord[1] - target[1], 2);
+			if (dist < minDist) {
+				minDist = dist;
+				bestCoord = coord;
+			}
+		}
+		return bestCoord as [number, number];
+	}
+
+	function startNavigation(destinationFeature: any) {
+		isNavigating = true;
+		popupOpen = false;
+
+		const destName =
+			destinationFeature.properties?.description || "Destination";
+		const destCoords = getCentroid(destinationFeature);
+
+		// Store feature to optimize routing point later
+		endPoint = {
+			coords: destCoords,
+			name: destName,
+			feature: destinationFeature,
+		};
+		navEndSearch = destName;
+
+		if (userLocation) {
+			startPoint = {
+				coords: userLocation,
+				name: "Your Location",
+				feature: null,
+			};
+			navStartSearch = "Your Location";
+			getDirections();
+		} else {
+			startPoint = null;
+			navStartSearch = "";
+		}
+	}
+
+	async function getDirections() {
+		if (!startPoint || !endPoint) return;
+
+		// Optimize connection points by picking vertices closest to each other
+		// This prevents "snapping" to roads outside the campus if the centroid is closer to the wall
+		const startCoords = startPoint.feature
+			? getNearestVertex(startPoint.feature, endPoint.coords)
+			: startPoint.coords;
+		const endCoords = endPoint.feature
+			? getNearestVertex(endPoint.feature, startCoords)
+			: endPoint.coords;
+
+		const straightDistance = getHaversineDistance(startCoords, endCoords);
+
+		// If significantly close, just show straight line to avoid routing overhead/errors
+		if (straightDistance < 20) {
+			createStraightLineRoute(startCoords, endCoords, straightDistance);
+			return;
+		}
+
+		const query = `${startCoords[0]},${startCoords[1]};${endCoords[0]},${endCoords[1]}`;
+		// Use radiuses=200 to allow snapping to roads that are slightly further away
+		const url = `https://router.project-osrm.org/route/v1/foot/${query}?overview=full&geometries=geojson&radiuses=200;200`;
+
+		try {
+			const res = await fetch(url);
+			const data = await res.json();
+
+			if (data.routes && data.routes.length > 0) {
+				const route = data.routes[0];
+
+				// Check if route goes significantly outside campus bounds
+				const bounds = PULCHOWK_BOUNDS;
+				const isOutside = route.geometry.coordinates.some(
+					(c: number[]) =>
+						c[0] < bounds[0][0] - 0.001 || // Add slight buffer
+						c[0] > bounds[1][0] + 0.001 ||
+						c[1] < bounds[0][1] - 0.001 ||
+						c[1] > bounds[1][1] + 0.001,
+				);
+
+				// REVISED FALLBACK LOGIC:
+				// 1. If route is extremely long (> 2km) inside a campus -> Fallback (likely wrong)
+				// 2. If route goes OUTSIDE and is a detour (> 3x straight) -> Fallback
+				// 3. Otherwise -> Use route
+				if (
+					route.distance > 2000 ||
+					(isOutside &&
+						route.distance > straightDistance * 3 &&
+						route.distance > 500)
+				) {
+					console.log(
+						"OSRM route rejected (Detour/Outside). Fallback to straight line.",
+					);
+					createStraightLineRoute(
+						startCoords,
+						endCoords,
+						straightDistance,
+					);
+					return;
+				}
+
+				isDirectFallback = false;
+
+				// Connect the actual start/end points to the route (fill the gap from snapping)
+				const fullGeometry = {
+					...route.geometry,
+					coordinates: [
+						startCoords,
+						...route.geometry.coordinates,
+						endCoords,
+					],
+				};
+
+				routeGeoJSON = {
+					type: "Feature",
+					geometry: fullGeometry,
+				};
+
+				const duration = Math.round(route.duration / 60);
+				const distance =
+					route.distance < 1000
+						? `${Math.round(route.distance)} m`
+						: `${(route.distance / 1000).toFixed(1)} km`;
+
+				routeDuration = `${duration} min`;
+				routeDistance = distance;
+
+				fitBoundsToRoute(route.geometry.coordinates);
+			} else {
+				// No route found, fallback
+				createStraightLineRoute(
+					startCoords,
+					endCoords,
+					straightDistance,
+				);
+			}
+		} catch (e) {
+			console.error("Error fetching directions:", e);
+			// Fallback on error
+			createStraightLineRoute(startCoords, endCoords, straightDistance);
+		}
+	}
+
+	function exitNavigation() {
+		isNavigating = false;
+		routeGeoJSON = null;
+		startPoint = null;
+		endPoint = null;
+		routeDuration = "";
+		routeDistance = "";
+	}
+
+	const filteredNavStartSuggestions = $derived(
+		navStartSearch.trim() && navStartSearch !== "Your Location"
+			? labels
+					.filter((label) =>
+						label.properties?.description
+							?.toLowerCase()
+							.includes(navStartSearch.toLowerCase()),
+					)
+					.slice(0, 5)
+			: [],
+	);
+
+	function selectNavStart(suggestion: any) {
+		const coords = getCentroid(suggestion);
+		startPoint = {
+			coords,
+			name: suggestion.properties.description,
+			feature: suggestion,
+		};
+		navStartSearch = suggestion.properties.description;
+		showNavStartSuggestions = false;
+		getDirections();
+	}
+
+	function useUserLocation() {
+		if (userLocation) {
+			startPoint = {
+				coords: userLocation,
+				name: "Your Location",
+				feature: null,
+			};
+			navStartSearch = "Your Location";
+			showNavStartSuggestions = false;
+			getDirections();
+		} else {
+			waitingForLocation = true;
+			if (geolocateControl) {
+				geolocateControl.trigger();
+			} else {
+				alert("Geolocation control not ready");
+				waitingForLocation = false;
+			}
 		}
 	}
 
@@ -464,50 +795,15 @@
 </script>
 
 <div class="relative w-full h-[calc(100vh-4rem)] bg-gray-50">
-	<!-- Search Container -->
-	<div
-		class="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4"
-	>
-		<div class="relative group">
-			<!-- Search Icon -->
-			<div
-				class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-blue-600 z-10"
-			>
-				<svg
-					class="w-5 h-5"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-					></path>
-				</svg>
-			</div>
-
-			<input
-				bind:value={search}
-				type="text"
-				placeholder="Search classrooms, departments..."
-				class="w-full pl-12 pr-12 py-4 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/90 backdrop-blur-xl text-gray-800 placeholder-gray-400 transition-all text-base font-medium"
-				onfocus={() => (showSuggestions = true)}
-				oninput={() => (showSuggestions = true)}
-				onblur={() => setTimeout(() => (showSuggestions = false), 200)}
-				onkeydown={handleKeydown}
-			/>
-
-			{#if search}
-				<button
-					aria-label="Clear search"
-					onclick={() => {
-						search = "";
-						showSuggestions = false;
-						selectedIndex = -1;
-					}}
-					class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+	{#if !isNavigating}
+		<!-- Search Container -->
+		<div
+			class="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4"
+		>
+			<div class="relative group">
+				<!-- Search Icon -->
+				<div
+					class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-blue-600 z-10"
 				>
 					<svg
 						class="w-5 h-5"
@@ -519,115 +815,35 @@
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
+							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
 						></path>
 					</svg>
-				</button>
-			{/if}
-
-			<!-- Autocomplete Suggestions Dropdown -->
-			{#if showSuggestions && filteredSuggestions.length > 0}
-				<div
-					class="absolute top-full mt-3 w-full bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden"
-					transition:fly={{ y: 10, duration: 200 }}
-				>
-					<ul class="max-h-[60vh] overflow-y-auto py-2">
-						{#each filteredSuggestions as suggestion, index}
-							{@const iconName = suggestion.properties?.icon}
-							{@const iconUrl = icons.find(
-								(i) => i.name === iconName,
-							)?.url}
-							<li>
-								<button
-									data-suggestion-index={index}
-									onmousedown={(e) => e.preventDefault()}
-									onclick={() =>
-										suggestion.properties?.description &&
-										selectSuggestion(
-											suggestion.properties.description,
-										)}
-									class="w-full px-5 py-3.5 text-left hover:bg-blue-50/80 transition-colors flex items-center gap-4 {index ===
-									selectedIndex
-										? 'bg-blue-50 text-blue-700'
-										: 'text-gray-700'}"
-								>
-									<div
-										class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 {index ===
-										selectedIndex
-											? 'bg-blue-200 text-blue-700'
-											: 'text-blue-500'}"
-									>
-										{#if iconUrl}
-											<img
-												src={iconUrl}
-												alt=""
-												class="w-5 h-5 object-contain"
-											/>
-										{:else}
-											<svg
-												class="w-4 h-4"
-												fill="none"
-												stroke="currentColor"
-												viewBox="0 0 24 24"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-												></path>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="2"
-													d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-												></path>
-											</svg>
-										{/if}
-									</div>
-									<div class="flex-1 min-w-0">
-										<p class="font-medium truncate">
-											{suggestion.properties?.description}
-										</p>
-										<p
-											class="text-xs text-gray-500 truncate mt-0.5"
-										>
-											Pulchowk Campus
-										</p>
-									</div>
-									{#if index === selectedIndex}
-										<svg
-											class="w-5 h-5 text-blue-600"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M9 5l7 7-7 7"
-											></path>
-										</svg>
-									{/if}
-								</button>
-							</li>
-						{/each}
-					</ul>
 				</div>
-			{/if}
 
-			<!-- No Results Message -->
-			{#if showSuggestions && search.trim() && filteredSuggestions.length === 0}
-				<div
-					class="absolute top-full mt-3 w-full bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100 p-6 text-center"
-					transition:fly={{ y: 10, duration: 200 }}
-				>
-					<div
-						class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400"
+				<input
+					bind:value={search}
+					type="text"
+					placeholder="Search classrooms, departments..."
+					class="w-full pl-12 pr-12 py-4 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/90 backdrop-blur-xl text-gray-800 placeholder-gray-400 transition-all text-base font-medium"
+					onfocus={() => (showSuggestions = true)}
+					oninput={() => (showSuggestions = true)}
+					onblur={() =>
+						setTimeout(() => (showSuggestions = false), 200)}
+					onkeydown={handleKeydown}
+				/>
+
+				{#if search}
+					<button
+						aria-label="Clear search"
+						onclick={() => {
+							search = "";
+							showSuggestions = false;
+							selectedIndex = -1;
+						}}
+						class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
 					>
 						<svg
-							class="w-6 h-6"
+							class="w-5 h-5"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -636,18 +852,299 @@
 								stroke-linecap="round"
 								stroke-linejoin="round"
 								stroke-width="2"
-								d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								d="M6 18L18 6M6 6l12 12"
 							></path>
 						</svg>
+					</button>
+				{/if}
+
+				<!-- Autocomplete Suggestions Dropdown -->
+				{#if showSuggestions && filteredSuggestions.length > 0}
+					<div
+						class="absolute top-full mt-3 w-full bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden"
+						transition:fly={{ y: 10, duration: 200 }}
+					>
+						<ul class="max-h-[60vh] overflow-y-auto py-2">
+							{#each filteredSuggestions as suggestion, index}
+								{@const iconName = suggestion.properties?.icon}
+								{@const iconUrl = icons.find(
+									(i) => i.name === iconName,
+								)?.url}
+								<li>
+									<button
+										data-suggestion-index={index}
+										onmousedown={(e) => e.preventDefault()}
+										onclick={() =>
+											suggestion.properties
+												?.description &&
+											selectSuggestion(
+												suggestion.properties
+													.description,
+											)}
+										class="w-full px-5 py-3.5 text-left hover:bg-blue-50/80 transition-colors flex items-center gap-4 {index ===
+										selectedIndex
+											? 'bg-blue-50 text-blue-700'
+											: 'text-gray-700'}"
+									>
+										<div
+											class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 {index ===
+											selectedIndex
+												? 'bg-blue-200 text-blue-700'
+												: 'text-blue-500'}"
+										>
+											{#if iconUrl}
+												<img
+													src={iconUrl}
+													alt=""
+													class="w-5 h-5 object-contain"
+												/>
+											{:else}
+												<svg
+													class="w-4 h-4"
+													fill="none"
+													stroke="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+													></path>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+													></path>
+												</svg>
+											{/if}
+										</div>
+										<div class="flex-1 min-w-0">
+											<p class="font-medium truncate">
+												{suggestion.properties
+													?.description}
+											</p>
+											<p
+												class="text-xs text-gray-500 truncate mt-0.5"
+											>
+												Pulchowk Campus
+											</p>
+										</div>
+										{#if index === selectedIndex}
+											<svg
+												class="w-5 h-5 text-blue-600"
+												fill="none"
+												stroke="currentColor"
+												viewBox="0 0 24 24"
+											>
+												<path
+													stroke-linecap="round"
+													stroke-linejoin="round"
+													stroke-width="2"
+													d="M9 5l7 7-7 7"
+												></path>
+											</svg>
+										{/if}
+									</button>
+								</li>
+							{/each}
+						</ul>
 					</div>
-					<p class="text-gray-900 font-medium">No locations found</p>
-					<p class="text-sm text-gray-500 mt-1">
-						Try searching for a different building or department
-					</p>
-				</div>
-			{/if}
+				{/if}
+
+				<!-- No Results Message -->
+				{#if showSuggestions && search.trim() && filteredSuggestions.length === 0}
+					<div
+						class="absolute top-full mt-3 w-full bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100 p-6 text-center"
+						transition:fly={{ y: 10, duration: 200 }}
+					>
+						<div
+							class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400"
+						>
+							<svg
+								class="w-6 h-6"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								></path>
+							</svg>
+						</div>
+						<p class="text-gray-900 font-medium">
+							No locations found
+						</p>
+						<p class="text-sm text-gray-500 mt-1">
+							Try searching for a different building or department
+						</p>
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
+
+	{#if isNavigating}
+		<div
+			class="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-md px-4 pointer-events-auto"
+			transition:fade={{ duration: 200 }}
+		>
+			<div
+				class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-4"
+			>
+				<div class="flex items-center gap-3 mb-4">
+					<button
+						aria-label="Exit navigation"
+						class="p-2 hover:bg-gray-100 rounded-full transition-colors"
+						onclick={exitNavigation}
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-6 w-6 text-gray-600"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M10 19l-7-7m0 0l7-7m-7 7h18"
+							/>
+						</svg>
+					</button>
+					<h2 class="font-semibold text-lg text-gray-800">
+						Directions
+					</h2>
+				</div>
+
+				<div class="flex flex-col gap-3 relative">
+					<!-- Start Input -->
+					<div class="relative group">
+						<div
+							class="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-gray-400"
+						></div>
+						<input
+							bind:value={navStartSearch}
+							type="text"
+							placeholder="Choose starting point"
+							class="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium"
+							onfocus={() => (showNavStartSuggestions = true)}
+							oninput={() => (showNavStartSuggestions = true)}
+						/>
+						{#if showNavStartSuggestions}
+							<div
+								class="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-20 max-h-60 overflow-y-auto"
+							>
+								<button
+									class="w-full px-4 py-3 text-left hover:bg-blue-50 text-blue-600 font-medium flex items-center gap-2"
+									onclick={useUserLocation}
+								>
+									<svg
+										class="w-4 h-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+										/>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+										/>
+									</svg>
+									Your Location
+									{#if waitingForLocation}
+										<span
+											class="text-xs text-gray-400 font-normal"
+											>(Locating...)</span
+										>
+									{/if}
+								</button>
+								{#each filteredNavStartSuggestions as suggestion}
+									<button
+										class="w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 text-sm border-t border-gray-50"
+										onclick={() =>
+											selectNavStart(suggestion)}
+									>
+										{suggestion.properties?.description}
+									</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
+					<!-- Connecting Line -->
+					<div
+						class="absolute left-4.5 top-10 bottom-10 w-0.5 bg-gray-300 border-l border-dashed border-gray-300 pointer-events-none"
+					></div>
+
+					<!-- End Input -->
+					<div class="relative">
+						<div
+							class="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-red-500"
+						></div>
+						<input
+							bind:value={navEndSearch}
+							readonly
+							type="text"
+							class="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-50 border-gray-200 text-gray-800 font-medium text-sm"
+						/>
+					</div>
+				</div>
+
+				{#if routeDuration}
+					<div
+						class="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between"
+						transition:fade
+					>
+						<div>
+							<div class="flex items-baseline gap-2">
+								<span class="text-2xl font-bold text-blue-600"
+									>{routeDuration}</span
+								>
+								<span class="text-sm text-gray-500 font-medium"
+									>({routeDistance})</span
+								>
+							</div>
+							<div class="text-xs text-gray-400 mt-0.5">
+								{isDirectFallback
+									? "Straight line (Internal paths not mapped)"
+									: "Walking via campus paths"}
+							</div>
+						</div>
+						<div
+							class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-600/30"
+						>
+							<svg
+								class="w-5 h-5"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+								/>
+							</svg>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
 
 	{#if showOutsideMessage}
 		<div
@@ -813,6 +1310,76 @@
 			{/if}
 		</GeoJSONSource>
 
+		{#if routeGeoJSON}
+			<GeoJSONSource data={routeGeoJSON} maxzoom={24}>
+				<LineLayer
+					layout={{
+						"line-join": "round",
+						"line-cap": "round",
+					}}
+					paint={{
+						"line-color": "#2563eb",
+						"line-width": 6,
+						"line-opacity": 0.8,
+					}}
+				/>
+				<LineLayer
+					paint={{
+						"line-color": "#ffffff",
+						"line-width": 2,
+						"line-opacity": 0.5,
+						"line-dasharray": [2, 1],
+					}}
+				/>
+			</GeoJSONSource>
+
+			<GeoJSONSource
+				data={{
+					type: "FeatureCollection",
+					features: [
+						startPoint
+							? {
+									type: "Feature",
+									geometry: {
+										type: "Point",
+										coordinates: startPoint.coords,
+									},
+									properties: { icon: "start-marker" },
+								}
+							: null,
+						endPoint
+							? {
+									type: "Feature",
+									geometry: {
+										type: "Point",
+										coordinates: endPoint.coords,
+									},
+									properties: { icon: "end-marker" },
+								}
+							: null,
+					].filter((f) => f !== null) as Feature[],
+				}}
+				maxzoom={24}
+			>
+				<CircleLayer
+					paint={{
+						"circle-radius": 8,
+						"circle-color": [
+							"match",
+							["get", "icon"],
+							"start-marker",
+							"#3b82f6",
+							"end-marker",
+							"#ef4444",
+							"#000",
+						],
+						"circle-stroke-width": 3,
+						"circle-stroke-color": "#fff",
+					}}
+				/>
+			</GeoJSONSource>
+		{/if}
+
 		<Popup
 			bind:open={popupOpen}
 			lnglat={popupLngLat}
@@ -935,6 +1502,45 @@
 						<p class="text-sm text-gray-600 leading-relaxed">
 							{popupData.description}
 						</p>
+						<button
+							class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+							onclick={() =>
+								startNavigation({
+									properties: {
+										description: popupData.title,
+									},
+									geometry: {
+										type: "Point",
+										coordinates: Array.isArray(popupLngLat)
+											? popupLngLat
+											: [
+													popupLngLat.lng,
+													popupLngLat.lat,
+												],
+									},
+								})}
+						>
+							<svg
+								class="w-4 h-4"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+								/>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+								/>
+							</svg>
+							Directions
+						</button>
 					</div>
 				</div>
 			{/key}
