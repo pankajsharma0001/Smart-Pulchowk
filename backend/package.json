@@ -5,16 +5,21 @@
 		"build:frontend": "cd ../frontend && npm run build",
 		"dev": "nodemon --exec tsx src/index.ts",
 		"dev:prod": "npm run build:frontend && npm run dev",
-		"start": "tsx src/index.ts"
+		"start": "tsx src/index.ts",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:studio": "drizzle-kit studio"
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",
 		"better-auth": "^1.4.10",
+		"cors": "^2.8.5",
 		"dotenv": "^17.2.3",
 		"drizzle-orm": "^0.45.1",
 		"express": "5.1.0"
 	},
 	"devDependencies": {
+		"@types/cors": "^2.8.19",
 		"@types/express": "5.0.0",
 		"@types/node": "20.11.17",
 		"drizzle-kit": "^0.31.8",

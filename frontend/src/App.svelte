@@ -12,6 +12,12 @@
 	import Home from "./pages/Home.svelte";
 	import Register from "./pages/Register.svelte";
 	import Dashboard from "./pages/Dashboard.svelte";
+	import Clubs from "./pages/Clubs.svelte";
+	import ClubDetails from "./pages/ClubDetails.svelte";
+	import ClubEvents from "./pages/ClubEvents.svelte";
+	import AllEvents from "./pages/AllEvents.svelte";
+	import EventDetails from "./pages/EventDetails.svelte";
+	import CreateEvent from "./pages/CreateEvent.svelte";
 
 	let instance: RouterInstance = $state()!;
 
@@ -19,8 +25,10 @@
 
 	const error = query("error");
 	let showError = $state(error === "unauthorized_domain");
+	const message = query("message");
 
 	if (error) goto("/");
+	if (message === "login_required") goto("register");
 
 	const routes: RouteConfig[] = [
 		{
@@ -37,6 +45,31 @@
 		{
 			path: "map",
 			component: async () => await import("./pages/Map.svelte"),
+		},
+		{
+			path: /^\/events\/?$/,
+			component: AllEvents,
+		},
+		{
+			
+			path: /^\/clubs\/\d+\/events\/create\/?$/,
+			component: CreateEvent,
+		},
+		{
+			path: /^\/clubs\/\d+\/events\/\d+\/?$/,
+			component: EventDetails,
+		},
+		{
+			path: /^\/clubs\/\d+\/events\/?$/,
+			component: ClubEvents,
+		},
+		{
+			path: /^\/clubs\/\d+\/?$/,
+			component: ClubDetails,
+		},
+		{
+			path: /^\/clubs\/?$/,
+			component: Clubs,
 		},
 	];
 </script>
@@ -63,6 +96,18 @@
 					href="/"
 					class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all"
 					>Home</a
+				>
+				<a
+					use:route
+					href="/clubs"
+					class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all"
+					>Clubs</a
+				>
+				<a
+					use:route
+					href="/events"
+					class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all"
+					>Events</a
 				>
 				{#if $session.isPending}
 					<div

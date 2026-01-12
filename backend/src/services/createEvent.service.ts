@@ -1,0 +1,107 @@
+import { CreateEventInput } from "../types/events.js";
+import { db } from "../lib/db.js";
+import { eq, and } from "drizzle-orm";
+import { clubs, events } from "../models/event-schema.js";
+
+
+
+export async function createEvent(authClubId: string, eventInput: CreateEventInput) {
+  
+    console.log('eventInput:', JSON.stringify(eventInput, null, 2));
+    
+    try {
+        const club = await db.query.clubs.findFirst({
+            where: eq(clubs.authClubId, authClubId),
+        });
+
+        if (!club) {
+            throw new Error('Club not found in system');
+        }
+
+        if (!club.isActive) {
+            throw new Error('Club is not active');
+        }
+
+       
+        console.log('Converting dates...');
+        let eventStartTime: Date;
+        let eventEndTime: Date;
+        let registrationDeadline: Date;
+
+        try {
+            eventStartTime = new Date(eventInput.eventStartTime);
+            eventEndTime = new Date(eventInput.eventEndTime);
+            registrationDeadline = new Date(eventInput.registrationDeadline);
+        } catch (err) {
+            console.error('Date parsing error:', err);
+            throw new Error('Failed to parse dates');
+        }
+
+        console.log('Converted dates:', {
+            eventStartTime,
+            eventEndTime,
+            registrationDeadline,
+            eventStartTimeValid: !isNaN(eventStartTime.getTime()),
+            eventEndTimeValid: !isNaN(eventEndTime.getTime()),
+            registrationDeadlineValid: !isNaN(registrationDeadline.getTime()),
+        });
+
+       
+        if (isNaN(eventStartTime.getTime()) || isNaN(eventEndTime.getTime()) || isNaN(registrationDeadline.getTime())) {
+            throw new Error('Invalid date format received from client');
+        }
+
+        
+        if (eventStartTime >= eventEndTime) {
+            throw new Error('Event end time must be after start time');
+        }
+
+        if (registrationDeadline >= eventStartTime) {
+            throw new Error('Registration deadline must be before event start time');
+        }
+
+       
+        const insertData = {
+            clubId: club.id,
+            title: eventInput.title,
+            description: eventInput.description,
+            eventType: eventInput.eventType,
+            venue: eventInput.venue,
+            maxParticipants: eventInput.maxParticipants,
+            registrationDeadline: registrationDeadline,
+            eventStartTime: eventStartTime,
+            eventEndTime: eventEndTime,
+            bannerUrl: eventInput.bannerUrl || null,
+            status: 'draft' as const,
+        };
+
+        console.log('Insert data prepared:', {
+            ...insertData,
+            registrationDeadline: registrationDeadline.toISOString(),
+            eventStartTime: eventStartTime.toISOString(),
+            eventEndTime: eventEndTime.toISOString(),
+        });
+
+        console.log('Attempting database insert...');
+        const [event] = await db.insert(events).values(insertData).returning();
+
+        console.log('Event created successfully:', event);
+
+        return {
+            success: true,
+            event,
+            message: 'Event created successfully',
+        };
+        
+    } catch (error: any) {
+        console.error('=== BACKEND ERROR ===');
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        console.error('Full error:', error);
+        
+        return {
+            success: false,
+            message: error.message || 'Failed to create event'
+        };
+    }
+}

@@ -4,6 +4,7 @@ import { db } from './db.js'
 import * as schema from '../models/auth-schema.js'
 import ENV from '../config/ENV.js'
 import { createAuthMiddleware } from "better-auth/api";
+import { createStudentProfile } from '../services/studentRegister.service.js'
 
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
@@ -40,6 +41,15 @@ export const auth = betterAuth({
 				// Redirect to frontend with error
 				throw ctx.redirect("/?error=unauthorized_domain");
 			}
+
+			const [firstName, ...lastParts] = (session.user.name || "").split(" ");
+			const lastName = lastParts.join(" ") || "";
+            await createStudentProfile({
+					authStudentId: session.user.id,
+					firstName,
+					lastName,
+					email: session.user.email || ""
+				});
 		})
 	}
 })
