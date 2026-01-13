@@ -91,25 +91,29 @@ export async function getClubEvents(clubId: number): Promise<{ success: boolean;
 
 
 export async function getUpcomingEvents(): Promise<{ success: boolean; upcomingEvents?: ClubEvent[]; message?: string }> {
-   try{ const res = await fetch(`${API_BASE}/get-upcoming-events`, {
-        credentials: 'include',
-    });
-    const json = await res.json();
-    return json.data;}catch(error: any){
+    try {
+        const res = await fetch(`${API_BASE}/get-upcoming-events`, {
+            credentials: 'include',
+        });
+        const json = await res.json();
+        return json.data;
+    } catch (error: any) {
         console.error("Error", error.message);
-        return {success: false, message: "Invalid server response"};
+        return { success: false, message: "Invalid server response" };
     }
 }
 
 
 export async function getAllEvents(): Promise<{ success: boolean; allEvents?: ClubEvent[]; message?: string }> {
-    try{const res = await fetch(`${API_BASE}/all-events`, {
-        credentials: 'include',
-    });
-    const json = await res.json();
-    return json.data;}catch(error: any){
+    try {
+        const res = await fetch(`${API_BASE}/all-events`, {
+            credentials: 'include',
+        });
+        const json = await res.json();
+        return json.data;
+    } catch (error: any) {
         console.error(error.message);
-        return {success: false, message: "Invalid server response"};
+        return { success: false, message: "Invalid server response" };
     }
 }
 
@@ -153,51 +157,57 @@ export async function createEvent(authId: string, eventData: {
 }
 
 
-export async function createClub(authClubId: string, clubData: {
+export async function createClub(clubData: {
     name: string;
     description?: string;
     email: string;
     logoUrl?: string;
 }): Promise<{ success: boolean; club?: Club; message?: string }> {
-    try{const res = await fetch(`${API_BASE}/create-club`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ authClubId, ...clubData }),
-    });
-    const json = await res.json();
-    return json;}catch(error){
+    try {
+        const res = await fetch(`${API_BASE}/create-club`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(clubData),
+        });
+        const json = await res.json();
+        return json;
+    } catch (error) {
         console.error(error);
-        return {success: false, message: "Internal server response"}
+        return { success: false, message: "Internal server response" }
     }
 }
 
 export async function registerForEvent(authStudentId: string, eventId: number): Promise<{ success: boolean; message?: string }> {
-    try{const res = await fetch(`${API_BASE}/register-event`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ authStudentId, eventId }),
-    });
-    const json = await res.json();
-    return json.data;}catch(error){
+    try {
+        const res = await fetch(`${API_BASE}/register-event`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ authStudentId, eventId }),
+        });
+        const json = await res.json();
+        return json.data;
+    } catch (error) {
         console.error(error);
-        return {success: false, message: "Internal server response"};
+        return { success: false, message: "Internal server response" };
     }
 }
 
 
 export async function cancelRegistration(authStudentId: string, eventId: number): Promise<{ success: boolean; message?: string }> {
-  try{  const res = await fetch(`${API_BASE}/cancel-registration`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ authStudentId, eventId }),
-    });
-    const json = await res.json();
-    return json.data;}catch(error){
+    try {
+        const res = await fetch(`${API_BASE}/cancel-registration`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ authStudentId, eventId }),
+        });
+        const json = await res.json();
+        return json.data;
+    } catch (error) {
         console.error(error);
-        return {success: false, message: "Internal server response"};
+        return { success: false, message: "Internal server response" };
     }
 }
 
@@ -221,14 +231,16 @@ export async function getEnrollments(authStudentId: string): Promise<{ success: 
 
 
 export async function getRegisteredStudents(eventId: number): Promise<any> {
-    try{const res = await fetch(`${API_BASE}/registered-student`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ eventId }),
-    });
-    const json = await res.json();
-    return json.data;}catch(error){
-        return {success: false, message: "Invalid server response"};
+    try {
+        const res = await fetch(`${API_BASE}/registered-student`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ eventId }),
+        });
+        const json = await res.json();
+        return json.data;
+    } catch (error) {
+        return { success: false, message: "Invalid server response" };
     }
 }

@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { createClub, getClubEvents, getClubs, getUpcomingevents, getClubById, getAllEvents } from "../services/clubEvents.service.js";
 import { createEvent } from "../services/createEvent.service.js";
 import { cancelEventRegistration, getEventRegistrations, getStudentActiveRegistration, registerStudentForEvent } from "../services/registerEvent.js";
+import { db } from "../lib/db.js";
+import { user } from "../models/auth-schema.js";
+import { eq } from "drizzle-orm";
 
 export async function allEvents(req: Request, res: Response) {
     try {
@@ -13,9 +16,24 @@ export async function allEvents(req: Request, res: Response) {
 }
 
 export async function CreateClub(req: Request, res: Response) {
-    const { authClubId, ...clubData } = req.body;
+    const { ...clubData } = req.body;
 
-    const result = await createClub(authClubId, clubData);
+    // Verify email is provided
+    if (!clubData.email) {
+        return res.status(400).json({ success: false, message: "Email is required to link club to a user" });
+    }
+
+    // Look up the user by email to get their ID
+    const targetUser = await db.query.user.findFirst({
+        where: eq(user.email, clubData.email)
+    });
+
+    if (!targetUser) {
+        return res.status(404).json({ success: false, message: "User with this email not found. Please ask them to register first." });
+    }
+
+    // Use the target user's ID as the authClubId
+    const result = await createClub(targetUser.id, clubData);
 
     return res.json(result);
 }

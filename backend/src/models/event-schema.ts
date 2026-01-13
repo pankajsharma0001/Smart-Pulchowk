@@ -11,6 +11,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { user } from "./auth-schema.js";
 
 export const eventStatusEnum = pgEnum("event_status", [
   "draft",
@@ -47,27 +48,6 @@ export const clubs = pgTable(
   ]
 );
 
-export const students = pgTable(
-  "students",
-  {
-    id: serial("id").primaryKey(),
-    authStudentId: varchar("auth_student_id", { length: 255 })
-      .notNull()
-      .unique(),
-    firstName: varchar("first_name", { length: 255 }).notNull(),
-    lastName: varchar("last_name", { length: 255 }).notNull(),
-    isActive: boolean("is_active").default(true).notNull(),
-    email: varchar("email", { length: 255 }).notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("students_auth_student_id_idx").on(
-      table.authStudentId
-    ),
-  ]
-);
-
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   clubId: integer("club_id")
@@ -97,9 +77,9 @@ export const eventRegistrations = pgTable(
   "event_registrations",
   {
     id: serial("id").primaryKey(),
-    studentId: integer("student_id")
+    userId: text("user_id")
       .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "cascade" }),
     eventId: integer("event_id")
       .notNull()
       .references(() => events.id, { onDelete: "cascade" }),
@@ -112,12 +92,12 @@ export const eventRegistrations = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("unique_student_event_idx").on(
-      table.studentId,
+    uniqueIndex("unique_user_event_idx").on(
+      table.userId,
       table.eventId
     ),
-    index("event_registrations_student_id_idx").on(
-      table.studentId
+    index("event_registrations_user_id_idx").on(
+      table.userId
     ),
     index("event_registrations_event_id_idx").on(table.eventId),
     index("event_registrations_status_idx").on(table.status),
@@ -131,10 +111,6 @@ export const clubsRelations = relations(clubs, ({ many }) => ({
   events: many(events),
 }));
 
-export const studentsRelations = relations(students, ({ many }) => ({
-  eventRegistrations: many(eventRegistrations),
-}));
-
 export const eventsRelations = relations(events, ({ one, many }) => ({
   club: one(clubs, {
     fields: [events.clubId],
@@ -146,9 +122,9 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
 export const eventRegistrationsRelations = relations(
   eventRegistrations,
   ({ one }) => ({
-    student: one(students, {
-      fields: [eventRegistrations.studentId],
-      references: [students.id],
+    user: one(user, {
+      fields: [eventRegistrations.userId],
+      references: [user.id],
     }),
     event: one(events, {
       fields: [eventRegistrations.eventId],

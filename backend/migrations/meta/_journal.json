@@ -15,6 +15,20 @@
       "when": 1768138198906,
       "tag": "0001_wide_stephen_strange",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768322525730,
+      "tag": "0002_eager_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1768322997094,
+      "tag": "0003_fancy_wild_pack",
+      "breakpoints": true
     }
   ]
 }

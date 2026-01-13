@@ -1,22 +1,14 @@
 import { registerStudentForEventInput } from "../types/events.js";
 import { db } from "../lib/db.js";
 import { eq, sql, desc, and } from "drizzle-orm";
-import { eventRegistrations, events, students } from "../models/event-schema.js";
+import { eventRegistrations, events } from "../models/event-schema.js";
 
 export async function registerStudentForEvent(registerData: registerStudentForEventInput) {
-    const { authStudentId, eventId } = registerData;
+    const { authStudentId: userId, eventId } = registerData;
 
     try {
-        const student = await db.query.students.findFirst({
-            where: eq(students.authStudentId, authStudentId),
-        });
-
-        if (!student) {
-            throw new Error('Student not found in the system');
-        }
-
         const event = await db.query.events.findFirst({
-            where: eq(events.id,  eventId),
+            where: eq(events.id, eventId),
         })
 
         if (!event) {
@@ -37,8 +29,8 @@ export async function registerStudentForEvent(registerData: registerStudentForEv
 
         const existingRegistration = await db.query.eventRegistrations.findFirst({
             where: and(
-                eq(eventRegistrations.studentId, student.id),
-                eq(eventRegistrations.eventId, event.id) 
+                eq(eventRegistrations.userId, userId),
+                eq(eventRegistrations.eventId, event.id)
             )
         });
 
@@ -61,7 +53,7 @@ export async function registerStudentForEvent(registerData: registerStudentForEv
         } else {
 
             registration = await db.insert(eventRegistrations).values({
-                studentId: student.id,
+                userId: userId,
                 eventId: eventId,
                 status: 'registered',
             }).returning();
@@ -92,7 +84,7 @@ export async function getEventRegistrations(eventId: number) {
     const registrations = await db.query.eventRegistrations.findMany({
         where: eq(eventRegistrations.eventId, eventId),
         with: {
-            student: true,
+            user: true,
         },
         orderBy: [desc(eventRegistrations.registeredAt)],
     });
@@ -111,27 +103,17 @@ export async function getEventRegistrations(eventId: number) {
         registeredAt: reg.registeredAt,
         attendedAt: reg.attendedAt,
         student: {
-            id: reg.student.id,
-            name: reg.student.lastName,
-            first_name: reg.student.firstName,
-            last_name: reg.student.lastName,
-            email: reg.student.email,
+            id: reg.user.id,
+            name: reg.user.name,
+            email: reg.user.email,
         }
     }));
 }
 
 export async function cancelEventRegistration(registerData: registerStudentForEventInput) {
-    const { authStudentId, eventId } = registerData;
+    const { authStudentId: userId, eventId } = registerData;
 
     try {
-        const student = await db.query.students.findFirst({
-            where: eq(students.authStudentId, authStudentId),
-        });
-
-        if (!student) {
-            throw new Error('Student not found');
-        }
-
         await db.update(eventRegistrations)
             .set({
                 status: 'cancelled',
@@ -140,7 +122,7 @@ export async function cancelEventRegistration(registerData: registerStudentForEv
             })
             .where(
                 and(
-                    eq(eventRegistrations.studentId, student.id),
+                    eq(eventRegistrations.userId, userId),
                     eq(eventRegistrations.eventId, eventId),
                     eq(eventRegistrations.status, 'registered')
                 )
@@ -167,20 +149,9 @@ export async function cancelEventRegistration(registerData: registerStudentForEv
 
 export async function getStudentActiveRegistration(authStudentId: string) {
     try {
-        const student = await db.query.students.findFirst({
-            where: eq(students.authStudentId, authStudentId),
-        });
-
-        if (!student) {
-            return {
-                success: false,
-                message: "student not found"
-            };
-        }
-
         const registration = await db.query.eventRegistrations.findFirst({
             where: and(
-                eq(eventRegistrations.studentId, student.id),
+                eq(eventRegistrations.userId, authStudentId),
                 eq(eventRegistrations.status, 'registered')
             ),
             with: {

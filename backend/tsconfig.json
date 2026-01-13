@@ -4,6 +4,8 @@
     "module": "nodenext",
     "outDir": "dist",
     "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "types": [
       "node"
     ]

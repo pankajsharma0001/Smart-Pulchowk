@@ -4,7 +4,6 @@ import { db } from './db.js'
 import * as schema from '../models/auth-schema.js'
 import ENV from '../config/ENV.js'
 import { createAuthMiddleware } from "better-auth/api";
-import { createStudentProfile } from '../services/studentRegister.service.js'
 
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
@@ -13,6 +12,14 @@ export const auth = betterAuth({
 	}),
 	emailAndPassword: {
 		enabled: true
+	},
+	user: {
+		additionalFields: {
+			role: {
+				type: "string",
+				defaultValue: "student"
+			}
+		}
 	},
 	socialProviders: {
 		google: {
@@ -31,25 +38,16 @@ export const auth = betterAuth({
 		after: createAuthMiddleware(async (ctx) => {
 			if (ctx.path !== "/callback/:id") return;
 			const session = ctx.context.newSession;
-			if (!session?.user?.email?.endsWith("@pcampus.edu.np")) {
-				// // Delete the session first
-				await ctx.context.internalAdapter.deleteSession(session.session.token);
+			// if (!session?.user?.email?.endsWith("@pcampus.edu.np")) {
+			// 	// // Delete the session first
+			// 	await ctx.context.internalAdapter.deleteSession(session.session.token);
 
-				// Delete the user account
-				// await ctx.context.internalAdapter.deleteUser(session.user.id);
+			// 	// Delete the user account
+			// 	// await ctx.context.internalAdapter.deleteUser(session.user.id);
 
-				// Redirect to frontend with error
-				throw ctx.redirect("/?error=unauthorized_domain");
-			}
-
-			const [firstName, ...lastParts] = (session.user.name || "").split(" ");
-			const lastName = lastParts.join(" ") || "";
-            await createStudentProfile({
-					authStudentId: session.user.id,
-					firstName,
-					lastName,
-					email: session.user.email || ""
-				});
+			// 	// Redirect to frontend with error
+			// 	throw ctx.redirect("/?message=unauthorized_domain");
+			// }
 		})
 	}
 })

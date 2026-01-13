@@ -1,5 +1,5 @@
 import { defineConfig } from 'drizzle-kit'
-import ENV from './src/config/ENV.js'
+import ENV from './src/config/ENV.ts'
 
 export default defineConfig({
 	schema: './src/models/**/*.ts',

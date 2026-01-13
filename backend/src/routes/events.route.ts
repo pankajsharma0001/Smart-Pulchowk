@@ -1,10 +1,10 @@
 import express from "express";
 import { CreateClub, CreateEvent, allEvents, cancelRegistration, clubEvents, eventEnrollment, eventRegistration, existingClub, registeredStudent, upcomingEvents } from "../controllers/event.controller.js";
-
+import { requireAuth, requireAdmin } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-router.post("/create-club", CreateClub);
+router.post("/create-club", requireAuth, requireAdmin, CreateClub);
 router.get("/clubs", existingClub);
 router.get("/clubs/:clubId", existingClub);
 router.get("/events/:clubId", clubEvents);
