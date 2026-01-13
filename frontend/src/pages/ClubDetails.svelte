@@ -14,6 +14,10 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
 
+  const isClubOwner = $derived(
+    $session.data?.user && club && club.authClubId === $session.data.user.id
+  );
+
   $effect(() => {
     if (clubId) {
       loadClub();
@@ -176,6 +180,28 @@
                       />
                     </svg>
                   </a>
+                  {#if isClubOwner}
+                    <a
+                      href="/clubs/{club.id}/events/create"
+                      use:routeAction
+                      class="inline-flex items-center gap-2 px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-2xl transition-all shadow-lg shadow-gray-900/20 hover:-translate-y-1 active:scale-95"
+                    >
+                      Create Event
+                      <svg
+                        class="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                    </a>
+                  {/if}
                 </div>
               </div>
             </div>
