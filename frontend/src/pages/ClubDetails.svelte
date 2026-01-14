@@ -53,12 +53,12 @@
   let loadingCategories = $state(true);
 
   const isClubOwner = $derived(
-    $session.data?.user && club && club.authClubId === $session.data.user.id,
+    $session.data?.user && club && club.authClubId === $session.data.user.id
   );
 
   const isTempAdmin = $derived(
     $session.data?.user &&
-      admins.some((admin) => admin.id === $session.data?.user?.id),
+      admins.some((admin) => admin.id === $session.data?.user?.id)
   );
 
   const userId = $derived($session.data?.user?.id);
@@ -155,9 +155,10 @@
         ...dataToSave
       } = editedProfile as any;
 
-      
       if (dataToSave.establishedYear) {
-        dataToSave.establishedYear = parseInt(dataToSave.establishedYear.toString());
+        dataToSave.establishedYear = parseInt(
+          dataToSave.establishedYear.toString()
+        );
       }
 
       let result;
@@ -239,7 +240,7 @@
       const result = await addClubAdmin(
         parseInt(clubId),
         newAdminEmail,
-        club.authClubId,
+        club.authClubId
       );
       if (result.success) {
         newAdminEmail = "";
@@ -266,7 +267,7 @@
       const result = await removeClubAdmin(
         parseInt(clubId),
         userId,
-        club.authClubId,
+        club.authClubId
       );
       if (result.success) {
         await loadAdmins();
@@ -597,7 +598,7 @@
                     <textarea
                       id="aboutClub"
                       bind:value={editedProfile.aboutClub}
-                      class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50"
+                      class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50 placeholder:text-gray-400"
                       placeholder="Write a compelling introduction about your club..."
                       rows="4"
                     ></textarea>
@@ -613,7 +614,7 @@
                       <textarea
                         id="achievements"
                         bind:value={editedProfile.achievements}
-                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50"
+                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50 placeholder:text-gray-400"
                         placeholder="List your group's major milestones (one per line)..."
                         rows="4"
                       ></textarea>
@@ -627,7 +628,7 @@
                       <textarea
                         id="benefits"
                         bind:value={editedProfile.benefits}
-                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50"
+                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50 placeholder:text-gray-400"
                         placeholder="What do students gain by joining? (one per line)..."
                         rows="4"
                       ></textarea>
@@ -669,7 +670,7 @@
                       <textarea
                         id="mission"
                         bind:value={editedProfile.mission}
-                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50"
+                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50 placeholder:text-gray-400"
                         placeholder="Define your daily goals (points split by new line)..."
                         rows="4"
                       ></textarea>
@@ -683,7 +684,7 @@
                       <textarea
                         id="vision"
                         bind:value={editedProfile.vision}
-                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50"
+                        class="w-full px-5 py-4 rounded-2xl border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all text-gray-700 bg-gray-50/50 placeholder:text-gray-400"
                         placeholder="Define your long-term aspirations..."
                         rows="4"
                       ></textarea>
@@ -727,7 +728,7 @@
                         id="contactPhone"
                         type="text"
                         bind:value={editedProfile.contactPhone}
-                        class="w-full px-4 py-3 rounded-xl border-gray-200 focus:ring-4 focus:ring-blue-100 bg-gray-50/50"
+                        class="w-full px-4 py-3 rounded-xl border-gray-200 focus:ring-4 focus:ring-blue-100 bg-gray-50/50 placeholder:text-gray-400"
                         placeholder="+977 ..."
                       />
                     </div>
@@ -741,7 +742,7 @@
                         id="websiteUrl"
                         type="url"
                         bind:value={editedProfile.websiteUrl}
-                        class="w-full px-4 py-3 rounded-xl border-gray-200 focus:ring-4 focus:ring-blue-100 bg-gray-50/50"
+                        class="w-full px-4 py-3 rounded-xl border-gray-200 focus:ring-4 focus:ring-blue-100 bg-gray-50/50 placeholder:text-gray-400"
                         placeholder="https://..."
                       />
                     </div>
@@ -812,19 +813,18 @@
                 </div>
               </div>
             {:else}
-            
               <div class="space-y-8">
                 <!-- Section 1: About the Club (Hero Introduction) -->
                 <div
-                  class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-white to-blue-50/30 p-8 border border-gray-100/80"
+                  class="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-50 via-white to-blue-50/30 p-8 border border-gray-100/80"
                 >
                   <div
-                    class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"
+                    class="absolute top-0 right-0 w-48 h-48 bg-linear-to-br from-blue-100/40 to-indigo-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"
                   ></div>
                   <div class="relative">
                     <div class="flex items-center gap-3 mb-5">
                       <div
-                        class="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-lg shadow-slate-900/20"
+                        class="flex items-center justify-center w-10 h-10 rounded-xl bg-linear-to-br from-slate-700 to-slate-900 text-white shadow-lg shadow-slate-900/20"
                       >
                         <svg
                           class="w-5 h-5"
@@ -851,10 +851,12 @@
                       </div>
                     </div>
                     {#if profile?.aboutClub}
-                    {#each textToPoints(profile?.aboutClub) as point}
-                      <p class="text-base leading-relaxed text-gray-600 pl-13">
-                        {point}
-                      </p>
+                      {#each textToPoints(profile?.aboutClub) as point}
+                        <p
+                          class="text-base leading-relaxed text-gray-600 pl-13"
+                        >
+                          {point}
+                        </p>
                       {/each}
                     {:else}
                       <p class="text-base leading-relaxed text-gray-600 pl-13">
@@ -865,9 +867,12 @@
                         various events throughout the year, from workshops and
                         seminars to social gatherings and competitions.
                       </p>
-                      <p class="text-base leading-relaxed text-gray-600 pl-13 mt-4">Members of {club.name} gain access to a network of like minded
-                        individuals, hands on experience in various projects, and the 
-                        opportunity to lead and organize campus wide events.
+                      <p
+                        class="text-base leading-relaxed text-gray-600 pl-13 mt-4"
+                      >
+                        Members of {club.name} gain access to a network of like minded
+                        individuals, hands on experience in various projects, and
+                        the opportunity to lead and organize campus wide events.
                       </p>
                     {/if}
 
@@ -1209,7 +1214,7 @@
                 {/if}
 
                 <!-- Section 6: Contact & Social Links -->
-                {#if  (profile?.socialLinks && Object.values(profile.socialLinks).some((v) => v))}
+                {#if profile?.socialLinks && Object.values(profile.socialLinks).some((v) => v)}
                   <div
                     class="relative overflow-hidden rounded-3xl bg-linear-to-br from-gray-50 via-slate-50/50 to-gray-100/50 p-8 border border-gray-200/60"
                   >
@@ -1362,7 +1367,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {#each eventCategoriesList as category}
                   <div
-                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white via-indigo-50/20 to-purple-50/30 border border-gray-100 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-300 hover:-translate-y-1"
+                    class="group relative overflow-hidden rounded-2xl bg-linear-to-br from-white via-indigo-50/20 to-purple-50/30 border border-gray-100 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-100/50 transition-all duration-300 hover:-translate-y-1"
                   >
                     <!-- Action Buttons for Owners -->
                     {#if isClubOwner}
@@ -1418,7 +1423,7 @@
                       class="block p-6 h-full"
                     >
                       <div
-                        class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white mb-4 shadow-lg shadow-indigo-200"
+                        class="w-12 h-12 bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white mb-4 shadow-lg shadow-indigo-200"
                       >
                         <svg
                           class="w-6 h-6"
@@ -1573,7 +1578,7 @@
                       type="text"
                       bind:value={editedCategory.name}
                       placeholder="e.g., Hackathon, Workshop, Seminar"
-                      class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400"
                     />
                   </div>
 
@@ -1589,7 +1594,7 @@
                       bind:value={editedCategory.description}
                       rows="3"
                       placeholder="What is this type of event in general?"
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400"
                     ></textarea>
                   </div>
 
@@ -1605,7 +1610,7 @@
                       bind:value={editedCategory.objectives}
                       rows="4"
                       placeholder="Enter each objective on a new line"
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400"
                     ></textarea>
                   </div>
 
@@ -1621,7 +1626,7 @@
                       bind:value={editedCategory.targetAudience}
                       rows="4"
                       placeholder="Who is this for? (separate by newlines)"
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400"
                     ></textarea>
                   </div>
 
@@ -1637,7 +1642,7 @@
                       bind:value={editedCategory.rules}
                       rows="4"
                       placeholder="General rules (separate by newlines)"
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400"
                     ></textarea>
                   </div>
 
@@ -1653,7 +1658,7 @@
                       bind:value={editedCategory.judgingCriteria}
                       rows="4"
                       placeholder="Evaluation points (separate by newlines)"
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400"
                     ></textarea>
                   </div>
 
@@ -1669,7 +1674,7 @@
                       bind:value={editedCategory.prerequisites}
                       rows="2"
                       placeholder="Any general requirements? (separate by newlines)"
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-400"
                     ></textarea>
                   </div>
                 </div>
@@ -1726,7 +1731,7 @@
                       type="email"
                       bind:value={newAdminEmail}
                       placeholder="Enter user email address"
-                      class="w-full px-4 py-3 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-shadow"
+                      class="w-full px-4 py-3 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-shadow placeholder:text-gray-400"
                     />
                   </div>
                   <button
