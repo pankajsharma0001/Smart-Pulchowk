@@ -19,7 +19,8 @@ const ENV = {
   DATABASE_URL: getEnvVar('DATABASE_URL'),
   GOOGLE_CLIENT_ID: getEnvVar('GOOGLE_CLIENT_ID'),
   GOOGLE_CLIENT_SECRET: getEnvVar('GOOGLE_CLIENT_SECRET'),
-  MODE: getEnvVar('MODE')
+  MODE: getEnvVar('MODE'),
+  GEMINI_API_KEY: getEnvVar('GEMINI_API_KEY'),
 }
 
 export default ENV

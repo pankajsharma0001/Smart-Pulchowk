@@ -15,6 +15,8 @@
   import { fade, fly, slide } from "svelte/transition";
   import { quintOut } from "svelte/easing";
   import LoadingSpinner from "../components/LoadingSpinner.svelte";
+  import { createQuery } from "@tanstack/svelte-query";
+  import { chatBot } from "../lib/api";
 
   const SATELLITE_STYLE: any = {
     version: 8,
@@ -973,7 +975,315 @@
         popupData.image.length;
     }
   }
+
+  let currentQuery = $state("");
+  let queryToExecute = $state("");
+  let messages = $state<any[]>([]);
+
+  const chatQuery = createQuery(() => ({
+    queryKey: ["chatbot", queryToExecute],
+    queryFn: async () => {
+      const res = await chatBot(queryToExecute);
+      if (!res.success) {
+        throw new Error(res.message || "Request failed");
+      }
+      return res.data;
+    },
+    enabled: queryToExecute.length > 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 60 * 24,
+  }));
+
+  $effect(() => {
+    if (chatQuery.isError && queryToExecute) {
+      messages = [
+        ...messages,
+        {
+          role: "error",
+          content: "Something went wrong",
+        },
+      ];
+      queryToExecute = "";
+    }
+  });
+
+  $effect(() => {
+    if (chatQuery.isSuccess && chatQuery.data && queryToExecute) {
+      messages = [
+        ...messages,
+        {
+          role: "assistant",
+          content: chatQuery.data.message,
+          locations: chatQuery.data.locations,
+          action: chatQuery.data.action,
+        },
+      ];
+
+      if (
+        chatQuery.data.locations &&
+        chatQuery.data.locations.length > 0 &&
+        map
+      ) {
+        const location = chatQuery.data.locations[0];
+
+        const { lat, lng } = location.coordinates;
+
+        map.flyTo({
+          center: [lng, lat],
+          zoom: 20,
+          duration: 2000,
+          essential: true,
+        });
+      }
+      queryToExecute = "";
+    }
+  });
+
+  let chatOpen = $state(false);
+  let messagesContainer: HTMLElement | null = $state(null);
+
+  $effect(() => {
+    if (messages.length > 0 && messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  });
+
+  function handleSubmit(e: Event) {
+    e.preventDefault();
+    if (!currentQuery.trim()) return;
+
+    messages = [
+      ...messages,
+      {
+        role: "user",
+        content: currentQuery,
+      },
+    ];
+
+    queryToExecute = currentQuery;
+    currentQuery = "";
+  }
 </script>
+
+<!-- Chatbot UI -->
+<div class="fixed bottom-10.5  right-6 z-100 flex flex-col items-end gap-4">
+  {#if chatOpen}
+    <div
+      class="w-95 h-137.5 bg-white/80 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 flex flex-col overflow-hidden origin-bottom-right"
+      transition:fly={{ y: 20, duration: 400, easing: quintOut }}
+    >
+      <!-- Chat Header -->
+      <div
+        class="p-5 bg-linear-to-r from-blue-600 to-blue-500 text-white flex items-center justify-between shadow-lg"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg leading-tight">Campus Assistant</h3>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"
+              ></span>
+              <span class="text-xs font-medium text-blue-100"
+                >Always available</span
+              >
+            </div>
+          </div>
+        </div>
+        <button
+          onclick={() => (chatOpen = false)}
+          class="p-2 hover:bg-white/20 rounded-xl transition-all active:scale-90"
+          aria-label="Close Chat"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Messages Area -->
+      <div
+        bind:this={messagesContainer}
+        class="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth"
+      >
+        {#if messages.length === 0}
+          <div
+            class="flex flex-col items-center justify-center h-full text-center p-6 space-y-4"
+            in:fade
+          >
+            <div
+              class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500"
+            >
+              <svg
+                class="w-8 h-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p class="text-gray-900 font-semibold">Hello there!</p>
+              <p class="text-gray-500 text-sm mt-1">
+                Ask me anything about Pulchowk Campus departments, landmarks, or
+                directions.
+              </p>
+            </div>
+          </div>
+        {/if}
+
+        {#each messages as message}
+          <div
+            class="flex {message.role === 'user'
+              ? 'justify-end'
+              : 'justify-start'}"
+            in:fly={{ y: 10, duration: 300 }}
+          >
+            <div
+              class="max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm
+                {message.role === 'user'
+                ? 'bg-blue-600 text-white rounded-br-none'
+                : message.role === 'error'
+                  ? 'bg-red-50 text-red-600 border border-red-100'
+                  : 'bg-white text-gray-800 rounded-bl-none border border-gray-100'}"
+            >
+              {message.content}
+            </div>
+          </div>
+        {/each}
+
+        {#if chatQuery.isFetching}
+          <div class="flex justify-start" in:fade>
+            <div
+              class="bg-gray-100 p-4 rounded-2xl rounded-bl-none flex gap-1.5 items-center"
+            >
+              <span
+                class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"
+              ></span>
+              <span
+                class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"
+              ></span>
+              <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+              ></span>
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <!-- Chat Input -->
+      <div class="p-4 bg-white border-t border-gray-100">
+        <form onsubmit={handleSubmit} class="flex items-center gap-2">
+          <input
+            type="text"
+            bind:value={currentQuery}
+            placeholder="Type your message..."
+            class="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            disabled={chatQuery.isFetching}
+          />
+          <button
+            type="submit"
+            disabled={chatQuery.isFetching || !currentQuery.trim()}
+            class="w-11 h-11 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-90 shadow-lg shadow-blue-600/20"
+          >
+            {#if chatQuery.isFetching}
+              <div
+                class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
+              ></div>
+            {:else}
+              <svg
+                class="w-5 h-5 rotate-90"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            {/if}
+          </button>
+        </form>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Chat Toggle Button -->
+  <button
+    onclick={() => (chatOpen = !chatOpen)}
+    class="w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-90 shadow-blue-600/40 relative group"
+    aria-label="Toggle Chat"
+  >
+    <div
+      class="absolute inset-0 bg-blue-600 rounded-full animate-ping opacity-20 scale-125 pointer-events-none mb-4 group-hover:opacity-0"
+    ></div>
+    {#if chatOpen}
+      <svg
+        class="w-7 h-7"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        transition:fade
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M19 9l-7 7-7-7"
+        />
+      </svg>
+    {:else}
+      <svg
+        class="w-7 h-7"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        transition:fade
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+        />
+      </svg>
+    {/if}
+  </button>
+</div>
 
 <div class="relative w-full h-[calc(100vh-4rem)] bg-gray-50">
   {#if !isNavigating}

@@ -471,3 +471,20 @@ export async function deleteEventCategory(categoryId: number): Promise<{ success
         return { success: false, message: error.message };
     }
 }
+
+export async function chatBot(query: string){
+    try{
+        const res = await fetch(`/api/chat`,{
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ query}),
+        });
+        const data =  await res.json();
+
+        console.log(data);
+        return {success: true, ...data};
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}

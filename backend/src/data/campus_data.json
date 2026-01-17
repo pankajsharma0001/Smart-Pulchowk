@@ -1,0 +1,48 @@
+{
+  "buildings": [
+    {
+    "id": "ictc-building",
+    "name": "ICTC Building",
+    "coordinates": { "lat": 27.68224422611749, "lng": 85.31914514155119 },
+    "description": "ICTC Building",
+    "services": [
+      {
+        "name": "ICTC Building",
+        "purpose": "Entrance Exam",
+        "location": "Main Building"
+      }
+    ]
+  },
+  {
+    "id": "campus-mess",
+    "name": "Campus Mess",
+    "coordinates": { "lat": 27.68100688137129, "lng": 85.31953172446174 },
+    "description": "Campus Mess",
+    "services": [
+      {
+        "name": "Dining Hall",
+        "purpose": "Student meals and food services",
+        "location": "Main Building"
+      }
+    ]
+  },
+  {
+    "id": "dean-office",
+    "name": "Dean Office",
+    "coordinates": { "lat": 27.681033526909417, "lng": 85.31860772765805 },
+    "description": "Dean Office",
+    "services": [
+      {
+        "name": "Dean's Office",
+        "purpose": "Administrative services, academic matters",
+        "location": "Main Office"
+      },
+      {
+        "name": "Dean's Office",
+        "purpose": "Id card",
+        "location": "Ground floor"
+      }
+    ]
+  }
+  ]
+}

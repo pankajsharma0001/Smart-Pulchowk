@@ -5,7 +5,7 @@ import { auth } from './lib/auth.js'
 import ENV from './config/ENV.js'
 import eventRoutes from './routes/events.route.js'
 import clubProfileRoutes from './routes/clubProfile.route.js'
-
+import chatBotRoutes from './routes/chatBot.route.js'
 
 const app = express()
 
@@ -15,6 +15,7 @@ app.all('/api/auth/{*any}', toNodeHandler(auth))
 app.use(express.json())
 app.use("/api/event", eventRoutes)
 app.use("/api/event", clubProfileRoutes)
+app.use("/api", chatBotRoutes);
 
 app.use(express.static(path.join(__dirname, '../../frontend/dist')))
 
