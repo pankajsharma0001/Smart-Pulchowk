@@ -51,11 +51,10 @@
   const error = query("message");
   let showError = $state(error === "unauthorized_domain");
 
-  $effect(() => {
     if (error === "unauthorized_domain") {
       goto("/");
     }
-  });
+ 
 
   const routes: RouteConfig[] = [
     {
