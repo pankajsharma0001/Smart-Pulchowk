@@ -24,7 +24,9 @@ import { user } from "../models/auth-schema.js";
 import { eq } from "drizzle-orm";
 import {
     handleClubLogoUrlUpload,
-    handleCLubLogoFileUpload
+    handleCLubLogoFileUpload,
+    handleEventBannerUrlUpload,
+    handleEventBannerFileUpload
 } from "../services/clubEvents.service.js";
 import { uploadEventBannerToCloudinary } from "../services/cloudinary.service.js";
 
@@ -327,31 +329,36 @@ export async function eventEnrollment(req: Request, res: Response) {
 
 export async function UploadEventBanner(req: Request, res: Response) {
     try {
-        if (!req.file) {
+        const { eventId } = req.params;
+
+        if (!eventId) {
             return res.json({
                 success: false,
-                message: "No file provided"
+                message: "Event Id is required"
             });
         }
 
-        const buffer = req.file.buffer;
-        const base64 = buffer.toString('base64');
-        const dataUri = `data:${req.file.mimetype};base64,${base64}`;
+        if (req.file) {
+            const result = await handleEventBannerFileUpload(
+                parseInt(eventId),
+                req.file
+            );
 
-        const result = await uploadEventBannerToCloudinary(dataUri);
-
-        if (!result.success) {
             return res.json(result);
-        }
+        } else if (req.body.imageUrl) {
+            const result = await handleEventBannerUrlUpload(
+                parseInt(eventId),
+                req.body.imageUrl
+            );
 
-        return res.json({
-            success: true,
-            data: {
-                url: result.url,
-                publicId: result.publicId
-            }
-        });
-    } catch (error) {
+            return res.json(result);
+        } else {
+            return res.json({
+                success: false,
+                message: "No file or URL provided"
+            });
+        }
+    } catch (error: any) {
         console.error("Upload event banner error:", error);
         return res.json({
             success: false,

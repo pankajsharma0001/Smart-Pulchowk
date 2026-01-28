@@ -473,15 +473,25 @@ export async function uploadClubLogo(clubId: number, logo: File | string): Promi
     }
 }
 
-export async function uploadEventBanner(file: File): Promise<{ success: boolean; data?: { url: string; publicId: string }; message?: string }> {
+export async function uploadEventBanner(eventId: number, banner: File | string): Promise<{ success: boolean; data?: { url: string; publicId: string | null }; message?: string }> {
     try {
-        const formData = new FormData();
-        formData.append('banner', file);
+        let body: FormData | string;
+        let headers: Record<string, string> = {};
 
-        const res = await fetch(`${API_EVENTS}/upload-banner`, {
+        if (banner instanceof File) {
+            const formData = new FormData();
+            formData.append('banner', banner);
+            body = formData;
+        } else {
+            headers['Content-Type'] = 'application/json';
+            body = JSON.stringify({ imageUrl: banner });
+        }
+
+        const res = await fetch(`${API_EVENTS}/${eventId}/upload-banner`, {
             method: 'POST',
+            headers,
             credentials: 'include',
-            body: formData
+            body
         });
         return await res.json();
     } catch (error: any) {

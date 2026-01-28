@@ -39,7 +39,7 @@ router.get("/all-events", allEvents);
 router.post("/register-event", eventRegistration);
 router.post("/registered-student", registeredStudent);
 router.post("/cancel-registration", cancelRegistration);
-router.post("/upload-banner", requireAuth, upload.single('banner'), UploadEventBanner); // Generic upload
+router.post("/:eventId/upload-banner", requireAuth, upload.single('banner'), UploadEventBanner); // Generic upload
 router.post("/enrollment", eventEnrollment);
 
 

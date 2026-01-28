@@ -16,7 +16,8 @@ import {
 import { user } from "../models/auth-schema.js";
 import {
     uploadClubLogoToCloudinary,
-    deleteImageFromCLoudinary
+    deleteImageFromCLoudinary,
+    uploadEventBanner
 } from "./cloudinary.service.js";
 import {
     UPLOAD_CONSTANTS,
@@ -578,6 +579,135 @@ export async function getAllEvents() {
         return {
             success: false,
             message: (error as Error).message
+        }
+    }
+}
+
+export async function updateEventBannerToDb(
+    eventId: number,
+    bannerUrl: string,
+    bannerPublicId: string | null
+) {
+    await db
+        .update(events)
+        .set({
+            bannerUrl,
+            bannerPublicId,
+            updatedAt: new Date()
+        })
+        .where(eq(events.id, eventId));
+}
+
+async function getEventBannerInfo(eventId: number) {
+    const [event] = await db
+        .select({
+            bannerUrl: events.bannerUrl,
+            bannerPublicId: events.bannerPublicId
+        })
+        .from(events)
+        .where(eq(events.id, eventId))
+        .limit(1);
+
+    return event;
+}
+
+export async function handleEventBannerUrlUpload(
+    eventId: number,
+    imageUrl: string
+) {
+    try {
+        if (!imageUrl || typeof imageUrl !== 'string') {
+            return {
+                success: false,
+                message: "Image URL is required"
+            };
+        }
+
+        if (!isValidImageUrl(imageUrl)) {
+            return {
+                success: false,
+                message: "Invalid image URL format"
+            };
+        }
+
+        const currentBanner = await getEventBannerInfo(eventId);
+
+        if (currentBanner?.bannerPublicId) {
+            await deleteImageFromCLoudinary(currentBanner.bannerPublicId);
+        }
+
+        await updateEventBannerToDb(eventId, imageUrl, null);
+
+        return {
+            success: true,
+            data: {
+                url: imageUrl,
+                publicId: null,
+                source: 'external'
+            }
+        };
+    } catch (error: any) {
+        console.error('Event banner URL upload error:', error);
+
+        return {
+            success: false,
+            message: error.message || 'Failed to save URL'
+        };
+    }
+}
+
+export async function handleEventBannerFileUpload(
+    eventId: number,
+    file: Express.Multer.File
+) {
+    try {
+        if (!ALLOWED_TYPES.includes(file.mimetype as any)) {
+            return {
+                success: false,
+                message: 'Invalid file type. Only JPEG, PNG, and WebP are allowed'
+            }
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+            return {
+                success: false,
+                message: 'File too large. Maximum size is 5MB'
+            }
+        }
+
+        const currentBanner = await getEventBannerInfo(eventId);
+
+        if (currentBanner?.bannerPublicId) {
+            await deleteImageFromCLoudinary(currentBanner.bannerPublicId);
+        }
+
+        const buffer = file.buffer;
+        const base64 = buffer.toString('base64');
+        const dataUri = `data:${file.mimetype};base64,${base64}`;
+
+        const uploadResult = await uploadEventBanner(eventId, dataUri);
+
+        if (!uploadResult.success || !uploadResult.url) {
+            return {
+                success: false,
+                message: uploadResult.message || 'Upload failed'
+            }
+        }
+
+        await updateEventBannerToDb(eventId, uploadResult.url, uploadResult.publicId || null);
+
+        return {
+            success: true,
+            data: {
+                url: uploadResult.url,
+                publicId: uploadResult.publicId,
+                source: 'cloudinary'
+            }
+        }
+    } catch (error: any) {
+        return {
+            success: false,
+            message: error.message || 'upload failed'
         }
     }
 }

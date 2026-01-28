@@ -234,20 +234,7 @@
     error = null;
 
     try {
-      let finalBannerUrl = bannerUrl;
-
-      if (bannerSource === "local" && bannerFile) {
-        isUploadingBanner = true;
-        const uploadRes = await uploadEventBanner(bannerFile);
-        isUploadingBanner = false;
-        if (uploadRes.success && uploadRes.data) {
-          finalBannerUrl = uploadRes.data.url;
-        } else {
-          error = uploadRes.message || "Failed to upload banner image";
-          submitting = false;
-          return;
-        }
-      }
+      let initialBannerUrl = bannerSource === "url" ? bannerUrl : undefined;
 
       const result = await createEvent(
         $session.data.user.id,
@@ -261,12 +248,22 @@
           registrationDeadline: registrationDeadline,
           eventStartTime: eventStartTime,
           eventEndTime: eventEndTime,
-          bannerUrl: finalBannerUrl || undefined,
+          bannerUrl: initialBannerUrl || undefined,
         },
       );
 
       if (result.success && result.event) {
         createdEventId = result.event.id;
+
+        if (bannerSource === "local" && bannerFile) {
+          isUploadingBanner = true;
+          const uploadRes = await uploadEventBanner(createdEventId, bannerFile);
+          isUploadingBanner = false;
+          if (!uploadRes.success) {
+            console.error("Banner upload failed:", uploadRes.message);
+          }
+        }
+
         success = true;
         showExtraDetailsPrompt = true;
       } else {

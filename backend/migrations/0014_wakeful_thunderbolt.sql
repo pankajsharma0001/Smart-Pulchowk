@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "banner_public_id" varchar(255);

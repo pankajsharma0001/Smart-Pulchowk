@@ -11,12 +11,14 @@
     getExtraEventDetails,
     createExtraEventDetails,
     updateExtraEventDetails,
+    uploadEventBanner,
     type ClubEvent,
     type Club,
     type ExtraEventDetail,
   } from "../lib/api";
   import LoadingSpinner from "../components/LoadingSpinner.svelte";
   import { fade, fly, slide } from "svelte/transition";
+  import { quintOut } from "svelte/easing";
 
   const { route } = $props();
   const clubId = $derived(route.result.path.params.clubId);
@@ -43,6 +45,14 @@
   let isEditingDetails = $state(false);
   let editedDetails = $state<Partial<ExtraEventDetail>>({});
   let saveLoading = $state(false);
+
+  // Banner editing state
+  let isEditingBanner = $state(false);
+  let bannerInputType = $state<"file" | "url">("file");
+  let bannerUrlInput = $state("");
+  let bannerFile = $state<File | null>(null);
+  let bannerPreview = $state<string | null>(null);
+  let uploadLoading = $state(false);
 
   $effect(() => {
     if (clubId && eventId) {
@@ -113,6 +123,54 @@
     } finally {
       loading = false;
     }
+  }
+
+  function handleFileChange(e: Event) {
+    const target = e.target as HTMLInputElement;
+    if (target.files && target.files[0]) {
+      bannerFile = target.files[0];
+      bannerPreview = URL.createObjectURL(bannerFile);
+    }
+  }
+
+  function handleUrlChange() {
+    bannerPreview = bannerUrlInput;
+  }
+
+  async function handleSaveBanner() {
+    if (!bannerPreview) return;
+
+    uploadLoading = true;
+    try {
+      const bannerData =
+        bannerInputType === "file" ? (bannerFile as File) : bannerUrlInput;
+      const result = await uploadEventBanner(parseInt(eventId), bannerData);
+
+      if (result.success) {
+        if (event) event.bannerUrl = result.data?.url || bannerPreview;
+        isEditingBanner = false;
+        bannerFile = null;
+        bannerUrlInput = "";
+        bannerPreview = null;
+        actionMessage = {
+          type: "success",
+          text: "Banner updated successfully!",
+        };
+      } else {
+        alert(result.message || "Failed to update banner");
+      }
+    } catch (err: any) {
+      alert(err.message || "An error occurred");
+    } finally {
+      uploadLoading = false;
+    }
+  }
+
+  function startEditingBanner() {
+    isEditingBanner = true;
+    bannerPreview = event?.bannerUrl || null;
+    bannerUrlInput = event?.bannerUrl || "";
+    bannerInputType = "file";
   }
 
   async function handleUpdateDetails() {
@@ -401,6 +459,36 @@
         <div
           class="absolute inset-0 bg-linear-to-t from-black/60 to-transparent"
         ></div>
+
+        {#if isClubOwner}
+          <div class="absolute top-6 left-6 z-10">
+            <button
+              onclick={startEditingBanner}
+              class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-black/40 backdrop-blur-md rounded-xl hover:bg-black/60 transition-all border border-white/20"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                ></path>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                ></path>
+              </svg>
+              Update Banner
+            </button>
+          </div>
+        {/if}
 
         <div
           class="absolute bottom-6 left-6 right-6 flex items-end justify-between"
@@ -1052,6 +1140,269 @@
     {/if}
   </div>
 </div>
+
+{#if isEditingBanner}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+    in:fade
+  >
+    <div
+      class="bg-white rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] w-full max-w-2xl overflow-hidden border border-white/20"
+      in:fly={{ y: 40, duration: 800, easing: quintOut }}
+    >
+      <!-- Premium Header -->
+      <div
+        class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50"
+      >
+        <div>
+          <h2 class="text-2xl font-black text-gray-900 tracking-tight">
+            Update Event Banner
+          </h2>
+          <p class="text-sm text-gray-500 font-medium">
+            First impressions are everything.
+          </p>
+        </div>
+        <button
+          onclick={() => (isEditingBanner = false)}
+          class="p-3 hover:bg-white rounded-2xl transition-all hover:shadow-sm active:scale-95 group"
+        >
+          <svg
+            class="w-6 h-6 text-gray-400 group-hover:text-gray-900 transition-colors"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2.5"
+              d="M6 18L18 6M6 6l12 12"
+            ></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-8 space-y-8">
+        <!-- Live Preview Component -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between px-1">
+            <label
+              class="block text-sm font-bold text-gray-900 uppercase tracking-widest"
+              >Live Preview</label
+            >
+            <span
+              class="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md uppercase"
+              >Hero Display</span
+            >
+          </div>
+
+          <div
+            class="relative h-48 sm:h-56 w-full rounded-[2rem] overflow-hidden shadow-inner bg-gray-100 group"
+          >
+            {#if bannerPreview}
+              <img
+                src={bannerPreview}
+                alt="Banner preview"
+                class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div
+                class="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent"
+              ></div>
+
+              <!-- Mock Content Overlay -->
+              {#if event}
+                <div
+                  class="absolute bottom-6 left-8 right-8 flex items-end justify-between"
+                >
+                  <div in:fade>
+                    <span
+                      class="inline-block px-2 py-0.5 mb-2 text-[10px] font-bold text-white bg-blue-600/80 backdrop-blur-sm rounded-full uppercase tracking-wider"
+                    >
+                      {event.eventType}
+                    </span>
+                    <p
+                      class="text-xl font-black text-white leading-none tracking-tight"
+                    >
+                      {event.title}
+                    </p>
+                  </div>
+                </div>
+              {/if}
+            {:else}
+              <div
+                class="absolute inset-0 flex flex-col items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-200 rounded-[2rem]"
+              >
+                <div
+                  class="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 text-gray-300"
+                >
+                  <svg
+                    class="w-8 h-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    ></path>
+                  </svg>
+                </div>
+                <p class="text-gray-400 font-bold text-sm tracking-tight">
+                  Select an image to see the magic
+                </p>
+              </div>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Input Methods -->
+        <div class="space-y-6">
+          <div class="flex items-center justify-center">
+            <div
+              class="flex p-1 bg-gray-100 rounded-2xl shadow-inner w-full max-w-xs"
+            >
+              <button
+                onclick={() => (bannerInputType = "file")}
+                class={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all uppercase tracking-widest ${bannerInputType === "file" ? "bg-white text-blue-600 shadow-md scale-[1.02]" : "text-gray-400 hover:text-gray-600"}`}
+              >
+                Local File
+              </button>
+              <button
+                onclick={() => (bannerInputType = "url")}
+                class={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all uppercase tracking-widest ${bannerInputType === "url" ? "bg-white text-blue-600 shadow-md scale-[1.02]" : "text-gray-400 hover:text-gray-600"}`}
+              >
+                Remote URL
+              </button>
+            </div>
+          </div>
+
+          {#if bannerInputType === "file"}
+            <div in:fly={{ y: 10, duration: 400 }}>
+              <label
+                class="relative flex flex-col items-center justify-center w-full h-40 transition-all bg-gray-50/50 border-2 border-gray-200 border-dashed rounded-[2rem] cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 group overflow-hidden"
+              >
+                <div
+                  class="flex flex-col items-center justify-center pb-6 pt-5 px-4 text-center"
+                >
+                  <div
+                    class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-3 transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500 text-blue-500"
+                  >
+                    <svg
+                      class="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      ></path>
+                    </svg>
+                  </div>
+                  {#if bannerFile}
+                    <p
+                      class="text-gray-900 font-bold text-sm tracking-tight truncate max-w-[250px]"
+                    >
+                      {bannerFile.name}
+                    </p>
+                    <p
+                      class="text-gray-400 text-[10px] font-black uppercase mt-1"
+                    >
+                      Ready for upgrade
+                    </p>
+                  {:else}
+                    <p class="text-gray-900 font-bold text-sm tracking-tight">
+                      Drop your banner here
+                    </p>
+                    <p class="text-gray-400 text-xs mt-1 font-medium">
+                      Click to browse your desktop
+                    </p>
+                  {/if}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  onchange={handleFileChange}
+                />
+              </label>
+            </div>
+          {:else}
+            <div in:fly={{ y: 10, duration: 400 }} class="space-y-4">
+              <div class="relative group">
+                <input
+                  type="text"
+                  bind:value={bannerUrlInput}
+                  oninput={handleUrlChange}
+                  placeholder="https://images.unsplash.com/your-epic-banner"
+                  class="w-full pl-6 pr-14 py-5 bg-gray-50 border-none rounded-[1.5rem] font-bold text-gray-900 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-gray-400/50 shadow-inner"
+                />
+                <div
+                  class="absolute right-6 top-1/2 -translate-y-1/2 text-gray-300"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                    ></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="p-8 bg-gray-50/80 border-t border-gray-100 flex gap-4">
+        <button
+          onclick={() => (isEditingBanner = false)}
+          class="flex-1 px-8 py-4 bg-white text-gray-500 font-black rounded-2xl border border-gray-200 hover:bg-gray-100 hover:text-gray-700 transition-all active:scale-95 uppercase tracking-widest text-[10px]"
+        >
+          Cancel
+        </button>
+        <button
+          onclick={handleSaveBanner}
+          disabled={uploadLoading || !bannerPreview}
+          class="flex-[2] px-8 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 shadow-2xl shadow-blue-500/20 active:scale-95 transition-all text-[10px] uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3"
+        >
+          {#if uploadLoading}
+            <div
+              class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+            ></div>
+            <span>Uploading...</span>
+          {:else}
+            <span>Update Banner</span>
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M14 5l7 7m0 0l-7 7m7-7H3"
+              ></path>
+            </svg>
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   /* Add any ephemeral animations or specific styles here if tailwind isn't enough */

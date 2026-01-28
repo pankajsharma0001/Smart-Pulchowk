@@ -38,7 +38,7 @@ export const clubs = pgTable(
     description: text("description"),
     email: varchar("email", { length: 255 }).notNull(),
     logoUrl: varchar("logo_url", { length: 500 }),
-    logoPublicId: varchar("logo_public_id",{length: 255}),
+    logoPublicId: varchar("logo_public_id", { length: 255 }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
@@ -86,6 +86,7 @@ export const events = pgTable("events", {
   eventEndTime: timestamp("event_end_time", { mode: "date" }).notNull(),
 
   bannerUrl: varchar("banner_url", { length: 500 }),
+  bannerPublicId: varchar("banner_public_id", { length: 255 }),
   currentParticipants: integer("current_participants").default(0).notNull(),
   isRegistrationOpen: boolean("is_registration_open").default(true).notNull(),
 
