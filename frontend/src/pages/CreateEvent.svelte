@@ -7,10 +7,10 @@
     type Club,
     getClubAdmins,
     uploadEventBanner,
+    createExtraEventDetails,
   } from "../lib/api";
   import LoadingSpinner from "../components/LoadingSpinner.svelte";
   import { fade, fly, slide, scale } from "svelte/transition";
-  import { cubicOut } from "svelte/easing";
   import { Datepicker, Input, Label, Timepicker, Badge } from "flowbite-svelte";
 
   const { route } = $props();
@@ -25,6 +25,19 @@
   let error = $state<string | null>(null);
   let success = $state(false);
   let isAuthorized = $state<boolean | null>(null);
+  let createdEventId = $state<number | null>(null);
+
+  // Extra Details State
+  let showExtraDetailsPrompt = $state(false);
+  let isAddingExtraDetails = $state(false);
+  let extraSubmitting = $state(false);
+
+  let fullDescription = $state("");
+  let objectives = $state("");
+  let targetAudience = $state("");
+  let prerequisites = $state("");
+  let rules = $state("");
+  let judgingCriteria = $state("");
 
   // Form Steps
   let currentStep = $state(1);
@@ -252,11 +265,10 @@
         },
       );
 
-      if (result.success) {
+      if (result.success && result.event) {
+        createdEventId = result.event.id;
         success = true;
-        setTimeout(() => {
-          goto(`/clubs/${clubId}/events`);
-        }, 1500);
+        showExtraDetailsPrompt = true;
       } else {
         error = result.message || "Failed to create event";
       }
@@ -265,6 +277,48 @@
     } finally {
       submitting = false;
     }
+  }
+
+  async function handleExtraDetailsSubmit(e: Event) {
+    e.preventDefault();
+    if (!createdEventId) return;
+
+    extraSubmitting = true;
+    error = null;
+
+    try {
+      const result = await createExtraEventDetails(createdEventId, {
+        fullDescription,
+        objectives,
+        targetAudience,
+        prerequisites,
+        rules,
+        judgingCriteria,
+      });
+
+      if (result.success) {
+        isAddingExtraDetails = false;
+        showExtraDetailsPrompt = false;
+        // The success message will now show the final state
+        setTimeout(() => {
+          goto(`/clubs/${clubId}/events`);
+        }, 2000);
+      } else {
+        error = result.message || "Failed to add extra details";
+      }
+    } catch (err: any) {
+      error = err.message || "An error occurred";
+    } finally {
+      extraSubmitting = false;
+    }
+  }
+
+  function skipExtraDetails() {
+    showExtraDetailsPrompt = false;
+    isAddingExtraDetails = false;
+    setTimeout(() => {
+      goto(`/clubs/${clubId}/events`);
+    }, 1500);
   }
 
   const stepTitles = ["Basic Information", "Date & Venue", "Media & Finalize"];
@@ -357,41 +411,194 @@
       </div>
     {:else if success}
       <div
-        class="max-w-md mx-auto p-12 bg-white/80 backdrop-blur-xl border border-white shadow-2xl rounded-[2rem] text-center"
+        class="max-w-4xl mx-auto p-8 sm:p-12 bg-white/80 backdrop-blur-xl border border-white shadow-2xl rounded-[2.5rem]"
         in:fly={{ y: 20, duration: 600 }}
       >
-        <div
-          class="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner shadow-green-100/50"
-        >
-          <svg
-            class="w-12 h-12"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        </div>
-        <h2 class="text-4xl font-black text-gray-900 mb-4 tracking-tight">
-          Success!
-        </h2>
-        <p class="text-gray-500 text-lg">
-          Your event "{title}" has been launched.
-        </p>
-        <div class="mt-8 flex gap-2 justify-center">
-          <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-          <div
-            class="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]"
-          ></div>
-          <div
-            class="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.4s]"
-          ></div>
-        </div>
+        {#if showExtraDetailsPrompt}
+          <div class="text-center" in:fade>
+            <div
+              class="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner shadow-green-100/50"
+            >
+              <svg
+                class="w-12 h-12"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h2 class="text-4xl font-black text-gray-900 mb-4 tracking-tight">
+              Event Created!
+            </h2>
+            <p class="text-gray-500 text-lg mb-10 max-w-md mx-auto">
+              Your event "{title}" is now live. Would you like to add extra
+              details like rules, objectives, or prerequisites now?
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onclick={() => (isAddingExtraDetails = true) && (showExtraDetailsPrompt = false)}
+                class="px-10 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
+              >
+                Yes, Add Details
+              </button>
+              <button
+                onclick={skipExtraDetails}
+                class="px-10 py-4 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 active:scale-95 transition-all"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        {:else if isAddingExtraDetails}
+          <div in:fade>
+            <div class="flex items-center justify-between mb-8">
+              <div>
+                <h2 class="text-3xl font-black text-gray-900 tracking-tight">
+                  Extra Event Details
+                </h2>
+                <p class="text-gray-500 font-medium">Add more context to your event (Optional)</p>
+              </div>
+              <button
+                onclick={skipExtraDetails}
+                class="text-gray-400 hover:text-gray-600 font-bold transition-colors"
+              >
+                Skip
+              </button>
+            </div>
+
+            <form onsubmit={handleExtraDetailsSubmit} class="space-y-6">
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                  <label class="block text-black font-bold mb-2">Full Description</label>
+                  <textarea
+                    bind:value={fullDescription}
+                    placeholder="Provide a detailed overview of the event..."
+                    rows="4"
+                    class="w-full bg-white/50 border border-gray-200 rounded-2xl p-4 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all resize-none placeholder:text-gray-400/70"
+                  ></textarea>
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-black font-bold mb-2">Objectives</label>
+                  <textarea
+                    bind:value={objectives}
+                    placeholder="What are the goals of this event?"
+                    rows="4"
+                    class="w-full bg-white/50 border border-gray-200 rounded-2xl p-4 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all resize-none placeholder:text-gray-400/70"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                  <label class="block text-black font-bold mb-2">Target Audience</label>
+                  <textarea
+                    bind:value={targetAudience}
+                    placeholder="Who should attend? (e.g., Energetic students, Tech enthusiasts...)"
+                    rows="4"
+                    class="w-full bg-white/50 border border-gray-200 rounded-2xl p-4 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all resize-none shadow-sm placeholder:text-gray-400/70"
+                  ></textarea>
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-black font-bold mb-2">Prerequisites</label>
+                  <textarea
+                    bind:value={prerequisites}
+                    placeholder="Any requirements or skills needed? (e.g., Basic Python, Enthusiasm...)"
+                    rows="4"
+                    class="w-full bg-white/50 border border-gray-200 rounded-2xl p-4 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all resize-none shadow-sm placeholder:text-gray-400/70"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                  <label class="block text-black font-bold mb-2">Event Rules</label>
+                  <textarea
+                    bind:value={rules}
+                    placeholder="List the do's and don'ts..."
+                    rows="4"
+                    class="w-full bg-white/50 border border-gray-200 rounded-2xl p-4 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all resize-none placeholder:text-gray-400/70"
+                  ></textarea>
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-black font-bold mb-2">Judging Criteria</label>
+                  <textarea
+                    bind:value={judgingCriteria}
+                    placeholder="How will participants be evaluated?"
+                    rows="4"
+                    class="w-full bg-white/50 border border-gray-200 rounded-2xl p-4 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all resize-none placeholder:text-gray-400/70"
+                  ></textarea>
+                </div>
+              </div>
+
+              {#if error}
+                <div class="p-4 bg-red-50 text-red-600 rounded-2xl font-semibold text-sm border border-red-100">
+                  {error}
+                </div>
+              {/if}
+
+              <div class="flex justify-end gap-4 pt-4">
+                <button
+                  type="button"
+                  onclick={skipExtraDetails}
+                  class="px-8 py-4 text-gray-400 font-bold hover:text-gray-600 transition-colors"
+                >
+                  Skip for Now
+                </button>
+                <button
+                  type="submit"
+                  disabled={extraSubmitting}
+                  class="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl hover:bg-black shadow-2xl active:scale-95 transition-all disabled:opacity-50 min-w-[180px]"
+                >
+                  {#if extraSubmitting}
+                    <div class="flex items-center gap-2">
+                      <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Saving Details...</span>
+                    </div>
+                  {:else}
+                    Save Details
+                  {/if}
+                </button>
+              </div>
+            </form>
+          </div>
+        {:else}
+          <div class="text-center" in:fade>
+            <div
+              class="w-24 h-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner"
+            >
+              <svg
+                class="w-12 h-12"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2 class="text-4xl font-black text-gray-900 mb-4 tracking-tight">
+              All Set!
+            </h2>
+            <p class="text-gray-500 text-lg mb-8 leading-relaxed">
+              Your event is fully documented. Redirecting you to the events page...
+            </p>
+            <div class="flex gap-2 justify-center">
+              <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+              <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+              <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+            </div>
+          </div>
+        {/if}
       </div>
     {:else}
       <div class="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
@@ -446,7 +653,7 @@
                       <Input
                         bind:value={title}
                         placeholder="What's the big announcement?"
-                        class="bg-white/50 border-gray-200 focus:ring-blue-500/20 rounded-2xl py-4 shadow-sm"
+                        class="bg-white/50 border-gray-200 focus:ring-blue-500/20 rounded-2xl py-4 shadow-sm placeholder:text-gray-400/70"
                         required
                       />
                     </div>
@@ -473,7 +680,7 @@
                         bind:value={description}
                         placeholder="Tell us everything. The mission, the vibe, the impact..."
                         rows="6"
-                        class="w-full bg-white/50 border border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl p-4 transition-all outline-none resize-none shadow-sm"
+                        class="w-full bg-white/50 border border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl p-4 transition-all outline-none resize-none shadow-sm placeholder:text-gray-400/70"
                       ></textarea>
                     </div>
                   </div>
@@ -534,16 +741,18 @@
                         <Input
                           bind:value={venue}
                           placeholder="Where is it happening?"
-                          class="bg-white/50 border-gray-200 rounded-2xl py-4 shadow-sm"
+                          class="bg-white/50 border-gray-200 rounded-2xl py-4 shadow-sm placeholder:text-gray-400/70"
                         />
                       </div>
                       <div>
-                        <label class="block text-black font-bold mb-2">Capacity</label>
+                        <label class="block text-black font-bold mb-2"
+                          >Capacity</label
+                        >
                         <Input
                           type="number"
                           bind:value={maxParticipants}
                           placeholder="Seats available (Optional)"
-                          class="bg-white/50 border-gray-200 rounded-2xl py-4 shadow-sm"
+                          class="bg-white/50 border-gray-200 rounded-2xl py-4 shadow-sm placeholder:text-gray-400/70"
                         />
                       </div>
                     </div>
@@ -557,7 +766,9 @@
                   <div class="space-y-8">
                     <div class="space-y-4">
                       <div class="flex items-center justify-between">
-                        <label class="block text-black font-bold mb-2">Feature Image</label>
+                        <label class="block text-black font-bold mb-2"
+                          >Feature Image</label
+                        >
                         <div
                           class="bg-gray-100 p-1 rounded-xl flex gap-1 shadow-inner"
                         >
@@ -586,7 +797,7 @@
                           type="url"
                           bind:value={bannerUrl}
                           placeholder="https://example.com/banner.png"
-                          class="bg-white/50 border-gray-200 rounded-2xl py-4 shadow-sm"
+                          class="bg-white/50 border-gray-200 rounded-2xl py-4 shadow-sm placeholder:text-gray-400/70"
                         />
                       {:else}
                         <div
