@@ -7,23 +7,27 @@ let isFirebaseInitialized = false;
 
 function initializeFirebase() {
     try {
-        const keyPath = ENV.FIREBASE_SERVICE_ACCOUNT_PATH;
+        let serviceAccount: any;
 
-        if (!keyPath) {
-            console.warn('Firebase Service Account Path not set. Automated notifications disabled.');
-            return;
+        if (ENV.FIREBASE_SERVICE_ACCOUNT_JSON) {
+            serviceAccount = JSON.parse(ENV.FIREBASE_SERVICE_ACCOUNT_JSON);
+            console.log('Firebase initializing from environment variable.');
+        } else if (ENV.FIREBASE_SERVICE_ACCOUNT_PATH) {
+            const keyPath = ENV.FIREBASE_SERVICE_ACCOUNT_PATH;
+            const absolutePath = path.isAbsolute(keyPath)
+                ? keyPath
+                : path.join(process.cwd(), keyPath);
+
+            if (fs.existsSync(absolutePath)) {
+                serviceAccount = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+                console.log(`Firebase initializing from file: ${absolutePath}`);
+            }
         }
 
-        const absolutePath = path.isAbsolute(keyPath)
-            ? keyPath
-            : path.join(process.cwd(), keyPath);
-
-        if (!fs.existsSync(absolutePath)) {
-            console.warn(`Firebase Service Account file not found at ${absolutePath}. Automated notifications disabled.`);
+        if (!serviceAccount) {
+            console.warn('No Firebase credentials found (JSON or Path). Automated notifications disabled.');
             return;
         }
-
-        const serviceAccount = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
 
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
