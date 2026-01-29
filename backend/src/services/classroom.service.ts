@@ -650,3 +650,57 @@ export async function gradeSubmission(
 
   return { success: true, submission: updated };
 }
+
+export async function getSubmissionsForExport(
+  assignmentId: number,
+  teacherId: string
+) {
+  const assignment = await db.query.assignments.findFirst({
+    where: eq(assignments.id, assignmentId),
+    with: {
+      subject: true,
+    }
+  });
+
+  if (!assignment) {
+    throw new Error("Assignment not found");
+  }
+
+  // Verify teacher access
+  const teacherAccess = await db.query.teacherSubjects.findFirst({
+    where: and(
+      eq(teacherSubjects.teacherId, teacherId),
+      eq(teacherSubjects.subjectId, assignment.subjectId)
+    ),
+  });
+
+  if (!teacherAccess) {
+    throw new Error("You are not authorized to access these submissions");
+  }
+
+  const results = await db.query.submissions.findMany({
+    where: eq(submissions.assignmentId, assignmentId),
+    with: {
+      student: {
+        columns: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: [asc(submissions.submittedAt)],
+  });
+
+  return {
+    assignmentTitle: assignment.title,
+    subjectTitle: assignment.subject.title,
+    data: results.map(sub => ({
+      Student: sub.student.name,
+      Email: sub.student.email,
+      Status: sub.status,
+      SubmittedAt: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : 'N/A',
+      FileUrl: sub.fileUrl || 'N/A',
+      Comment: sub.comment || ''
+    }))
+  };
+}

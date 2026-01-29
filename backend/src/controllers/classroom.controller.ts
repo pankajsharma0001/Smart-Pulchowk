@@ -11,7 +11,9 @@ import {
   submitAssignmentWork,
   upsertStudentProfile,
   gradeSubmission,
+  getSubmissionsForExport,
 } from "../services/classroom.service.js";
+import { jsonToCsv, generatePdf } from "../lib/export-utils.js";
 
 export async function getFaculties(req: Request, res: Response) {
   try {
@@ -226,6 +228,45 @@ export async function gradeStudentSubmission(req: Request, res: Response) {
 
     return res.json(result);
   } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function ExportAssignmentSubmissions(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    const { assignmentId } = req.params;
+    const format = req.query.format as string || 'csv';
+
+    if (!assignmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "assignmentId is required",
+      });
+    }
+
+    const { assignmentTitle, subjectTitle, data } = await getSubmissionsForExport(
+      Number(assignmentId),
+      user.id
+    );
+
+    if (format === 'pdf') {
+      const buffer = await generatePdf(
+        `Submissions: ${assignmentTitle}`,
+        `Subject: ${subjectTitle} | Exported on ${new Date().toLocaleString()}`,
+        data
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="submissions_${assignmentId}.pdf"`);
+      return res.send(buffer);
+    } else {
+      const csv = jsonToCsv(data);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="submissions_${assignmentId}.csv"`);
+      return res.send(csv);
+    }
+  } catch (error: any) {
+    console.error("Export submissions error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 }

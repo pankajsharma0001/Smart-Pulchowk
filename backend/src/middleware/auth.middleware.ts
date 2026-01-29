@@ -16,10 +16,14 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
         return next();
     }
 
-    // Fallback for Mobile App: Check Authorization header for User ID
+    // Fallback for Mobile App: Check Authorization header or query param for User ID
     const authHeader = req.headers['authorization'];
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const userId = authHeader.split(' ')[1];
+    const queryToken = req.query.token as string;
+    const userId = (authHeader && authHeader.startsWith('Bearer '))
+        ? authHeader.split(' ')[1]
+        : queryToken;
+
+    if (userId) {
         try {
             const dbUser = await db.query.user.findFirst({
                 where: eq(user.id, userId),
@@ -49,8 +53,12 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     } else {
 
         const authHeader = req.headers['authorization'];
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const userId = authHeader.split(' ')[1];
+        const queryToken = req.query.token as string;
+        const userId = (authHeader && authHeader.startsWith('Bearer '))
+            ? authHeader.split(' ')[1]
+            : queryToken;
+
+        if (userId) {
             try {
                 const dbUser = await db.query.user.findFirst({
                     where: eq(user.id, userId),
@@ -58,7 +66,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
 
                 if (dbUser) {
                     (req as any).user = dbUser;
-                    (req as any).session = { userId: dbUser.id }; 
+                    (req as any).session = { userId: dbUser.id };
                 }
             } catch (error) {
                 console.error("Auth middleware error:", error);

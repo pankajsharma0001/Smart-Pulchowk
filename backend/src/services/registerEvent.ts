@@ -1,6 +1,6 @@
 import { registerStudentForEventInput } from "../types/events.js";
 import { db } from "../lib/db.js";
-import { eq, sql, desc, and } from "drizzle-orm";
+import { eq, sql, desc, and, asc } from "drizzle-orm";
 import { eventRegistrations, events } from "../models/event-schema.js";
 
 export async function registerStudentForEvent(registerData: registerStudentForEventInput) {
@@ -206,4 +206,40 @@ export async function getStudentActiveRegistration(authStudentId: string) {
             message: error.message
         }
     }
+}
+
+export async function getEventRegistrationsForExport(eventId: number) {
+    const event = await db.query.events.findFirst({
+        where: eq(events.id, eventId),
+        columns: {
+            title: true,
+        }
+    });
+
+    if (!event) {
+        throw new Error("Event not found");
+    }
+
+    const registrations = await db.query.eventRegistrations.findMany({
+        where: eq(eventRegistrations.eventId, eventId),
+        with: {
+            user: {
+                columns: {
+                    name: true,
+                    email: true
+                }
+            },
+        },
+        orderBy: [asc(eventRegistrations.registeredAt)],
+    });
+
+    return {
+        eventTitle: event.title,
+        data: registrations.map(reg => ({
+            Name: reg.user.name,
+            Email: reg.user.email,
+            Status: reg.status,
+            Date: reg.registeredAt ? new Date(reg.registeredAt).toLocaleDateString() : 'N/A'
+        }))
+    };
 }

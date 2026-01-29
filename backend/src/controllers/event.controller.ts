@@ -17,8 +17,10 @@ import {
     cancelEventRegistration,
     getEventRegistrations,
     getStudentActiveRegistration,
-    registerStudentForEvent
+    registerStudentForEvent,
+    getEventRegistrationsForExport
 } from "../services/registerEvent.js";
+import { jsonToCsv, generatePdf } from "../lib/export-utils.js";
 import { db } from "../lib/db.js";
 import { user } from "../models/auth-schema.js";
 import { eq } from "drizzle-orm";
@@ -364,6 +366,38 @@ export async function UploadEventBanner(req: Request, res: Response) {
             success: false,
             message: error.message || "Upload failed"
         });
+    }
+}
+
+export async function ExportRegisteredStudents(req: Request, res: Response) {
+    try {
+        const { eventId } = req.params;
+        const format = req.query.format as string || 'csv';
+
+        if (!eventId) {
+            return res.status(400).json({ success: false, message: "Event Id is required" });
+        }
+
+        const { eventTitle, data } = await getEventRegistrationsForExport(parseInt(eventId));
+
+        if (format === 'pdf') {
+            const buffer = await generatePdf(
+                `Registered Students - ${eventTitle}`,
+                `Exported on ${new Date().toLocaleString()}`,
+                data
+            );
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="registrations_${eventId}.pdf"`);
+            return res.send(buffer);
+        } else {
+            const csv = jsonToCsv(data);
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', `attachment; filename="registrations_${eventId}.csv"`);
+            return res.send(csv);
+        }
+    } catch (error: any) {
+        console.error("Export students error:", error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 }
 

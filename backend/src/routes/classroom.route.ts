@@ -12,6 +12,7 @@ import {
   submitAssignment,
   upsertMyProfile,
   gradeStudentSubmission,
+  ExportAssignmentSubmissions,
 } from "../controllers/classroom.controller.js";
 import { requireAuth, requireTeacher } from "../middleware/auth.middleware.js";
 
@@ -47,6 +48,13 @@ router.put(
   requireAuth,
   requireTeacher,
   gradeStudentSubmission
+);
+
+router.get(
+  "/assignments/:assignmentId/export-submissions",
+  requireAuth,
+  requireTeacher,
+  ExportAssignmentSubmissions
 );
 
 export default router;

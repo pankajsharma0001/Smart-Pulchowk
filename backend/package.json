@@ -14,13 +14,15 @@
 		"@better-auth/expo": "^1.4.15",
 		"@google/generative-ai": "^0.24.1",
 		"@neondatabase/serverless": "^1.0.2",
+		"@types/pdfkit": "^0.17.4",
 		"better-auth": "^1.4.10",
 		"cloudinary": "^2.9.0",
 		"dotenv": "^17.2.3",
 		"drizzle-orm": "^0.45.1",
 		"express": "5.1.0",
 		"firebase-admin": "^13.6.0",
-		"multer": "^2.0.2"
+		"multer": "^2.0.2",
+		"pdfkit": "^0.17.2"
 	},
 	"devDependencies": {
 		"@types/cors": "^2.8.19",
