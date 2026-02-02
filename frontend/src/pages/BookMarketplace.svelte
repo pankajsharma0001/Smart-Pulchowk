@@ -463,10 +463,11 @@
                                             />
                                         </svg>
                                     </div>
-                                    <label
+                                    <div
                                         class="text-sm font-black text-slate-900 uppercase tracking-widest"
-                                        >Book Meta</label
                                     >
+                                        Book Meta
+                                    </div>
                                 </div>
                                 <div class="space-y-2">
                                     <input
@@ -505,10 +506,11 @@
                                         />
                                     </svg>
                                 </div>
-                                <label
+                                <div
                                     class="text-sm font-black text-slate-900 uppercase tracking-widest"
-                                    >Library Genre</label
                                 >
+                                    Library Genre
+                                </div>
                             </div>
                             <div class="grid grid-cols-1 gap-2">
                                 <select
@@ -549,10 +551,11 @@
                                         />
                                     </svg>
                                 </div>
-                                <label
+                                <div
                                     class="text-sm font-black text-slate-900 uppercase tracking-widest"
-                                    >Quality Standard</label
                                 >
+                                    Quality Standard
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 {#each ["new", "good", "fair", "poor"] as cond}
@@ -599,10 +602,11 @@
                                         />
                                     </svg>
                                 </div>
-                                <label
+                                <div
                                     class="text-sm font-black text-slate-900 uppercase tracking-widest"
-                                    >Budgeting</label
                                 >
+                                    Budgeting
+                                </div>
                             </div>
                             <div class="flex items-center gap-3">
                                 <div class="relative flex-1">
@@ -1013,6 +1017,7 @@
 
     .line-clamp-1 {
         display: -webkit-box;
+        line-clamp: 1;
         -webkit-line-clamp: 1;
         -webkit-box-orient: vertical;
         overflow: hidden;

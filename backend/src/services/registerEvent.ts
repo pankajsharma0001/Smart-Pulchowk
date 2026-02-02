@@ -1,11 +1,9 @@
-import { registerStudentForEventInput } from "../types/events.js";
 import { db } from "../lib/db.js";
 import { eq, sql, desc, and, asc } from "drizzle-orm";
 import { eventRegistrations, events } from "../models/event-schema.js";
+import { unwrapOne } from "../lib/type-utils.js";
 
-export async function registerStudentForEvent(registerData: registerStudentForEventInput) {
-    const { authStudentId: userId, eventId } = registerData;
-
+export async function registerStudentForEvent(userId: string, eventId: number) {
     try {
         const event = await db.query.events.findFirst({
             where: eq(events.id, eventId),
@@ -102,30 +100,29 @@ export async function getEventRegistrations(eventId: number) {
         orderBy: [desc(eventRegistrations.registeredAt)],
     });
 
-    if (registrations.length === 0) {
+    const mapped = registrations.map(reg => {
+        const student = unwrapOne(reg.user);
         return {
-            success: true,
-            message: "No registrations yet..",
-            registrations: []
-        }
-    }
+            registrationId: reg.id,
+            status: reg.status,
+            registeredAt: reg.registeredAt,
+            attendedAt: reg.attendedAt,
+            student: {
+                id: student?.id,
+                name: student?.name,
+                email: student?.email,
+            }
+        };
+    });
 
-    return registrations.map(reg => ({
-        registrationId: reg.id,
-        status: reg.status,
-        registeredAt: reg.registeredAt,
-        attendedAt: reg.attendedAt,
-        student: {
-            id: reg.user.id,
-            name: reg.user.name,
-            email: reg.user.email,
-        }
-    }));
+    return {
+        success: true,
+        registrations: mapped,
+        message: registrations.length === 0 ? "No registrations yet.." : undefined
+    };
 }
 
-export async function cancelEventRegistration(registerData: registerStudentForEventInput) {
-    const { authStudentId: userId, eventId } = registerData;
-
+export async function cancelEventRegistration(userId: string, eventId: number) {
     try {
         await db.update(eventRegistrations)
             .set({
@@ -160,11 +157,11 @@ export async function cancelEventRegistration(registerData: registerStudentForEv
     }
 }
 
-export async function getStudentActiveRegistration(authStudentId: string) {
+export async function getStudentActiveRegistration(userId: string) {
     try {
         const registrations = await db.query.eventRegistrations.findMany({
             where: and(
-                eq(eventRegistrations.userId, authStudentId),
+                eq(eventRegistrations.userId, userId),
                 eq(eventRegistrations.status, 'registered')
             ),
             with: {
@@ -235,11 +232,14 @@ export async function getEventRegistrationsForExport(eventId: number) {
 
     return {
         eventTitle: event.title,
-        data: registrations.map(reg => ({
-            Name: reg.user.name,
-            Email: reg.user.email,
-            Status: reg.status,
-            Date: reg.registeredAt ? new Date(reg.registeredAt).toLocaleDateString() : 'N/A'
-        }))
+        data: registrations.map(reg => {
+            const student = unwrapOne(reg.user);
+            return {
+                Name: student?.name || "",
+                Email: student?.email || "",
+                Status: reg.status,
+                Date: reg.registeredAt ? new Date(reg.registeredAt).toLocaleDateString() : 'N/A'
+            };
+        })
     };
 }

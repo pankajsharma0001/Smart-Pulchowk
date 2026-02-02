@@ -23,6 +23,7 @@ import {
     UPLOAD_CONSTANTS,
     isValidImageUrl
 } from "../config/cloudinary.js";
+import { unwrapOne } from "../lib/type-utils.js";
 
 
 const { MAX_FILE_SIZE, ALLOWED_TYPES } = UPLOAD_CONSTANTS;
@@ -725,7 +726,12 @@ export async function cancelEvent(authId: string, eventId: number) {
             return { success: false, message: "Event not found" };
         }
 
-        const isPrimaryOwner = event.club.authClubId === authId;
+        const club = unwrapOne(event.club);
+        if (!club) {
+            return { success: false, message: "Club not found for this event" };
+        }
+
+        const isPrimaryOwner = club.authClubId === authId;
 
         const adminEntry = await db.query.clubAdmins.findFirst({
             where: and(

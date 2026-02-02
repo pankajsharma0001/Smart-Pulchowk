@@ -12,7 +12,7 @@
     queryKey: ["enrollments", $session.data?.user?.id],
     queryFn: async () => {
       if (!$session.data?.user?.id) return [];
-      const result = await getEnrollments($session.data.user.id);
+      const result = await getEnrollments();
       if (result.success && result.registrations) {
         return result.registrations;
       }

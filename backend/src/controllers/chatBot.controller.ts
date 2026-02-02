@@ -54,14 +54,14 @@ Return JSON:
 
 CRITICAL RULES FOR DIRECTIONS/ROUTES:
 - If user asks for "directions", "route", "navigate from X to Y", "how to get from X to Y", "take me from X to Y":
-  → action MUST be "show_route"
-  → locations array MUST have EXACTLY 2 items:
+  -> action MUST be "show_route"
+  -> locations array MUST have EXACTLY 2 items:
     1. First item: the START location with role: "start"
     2. Second item: the END/destination location with role: "end"
-  → Message should describe how to walk between the two locations
+  -> Message should describe how to walk between the two locations
 
-- If user just asks "where is X" or "show me X" → action: "show_location", single location with role: "destination"
-- If user asks about multiple unrelated locations → action: "show_multiple_locations"
+- If user just asks "where is X" or "show me X" -> action: "show_location", single location with role: "destination"
+- If user asks about multiple unrelated locations -> action: "show_multiple_locations"
 
 Example for directions:
 User: "Show me directions from Pulchowk Library to Campus Mess"

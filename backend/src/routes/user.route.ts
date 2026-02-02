@@ -2,6 +2,7 @@ import express from "express";
 import { db } from "../lib/db.js";
 import { user } from "../models/auth-schema.js";
 import { eq } from "drizzle-orm";
+import { requireFirebaseAuth } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
@@ -10,9 +11,50 @@ const router = express.Router();
  * This allows Firebase Auth users from the mobile app to be registered in the same database
  * as Better Auth users from the website
  */
-router.post("/sync-user", async (req, res) => {
+router.post("/sync-user", requireFirebaseAuth, async (req, res) => {
     try {
-        const { authStudentId, email, name, image, fcmToken } = req.body;
+        const firebaseUser = (req as any).firebaseUser as {
+            uid?: string;
+            email?: string;
+            name?: string;
+            picture?: string;
+            email_verified?: boolean;
+        };
+
+        const {
+            authStudentId: bodyAuthStudentId,
+            email: bodyEmail,
+            name: bodyName,
+            image: bodyImage,
+            fcmToken
+        } = req.body;
+
+        const authStudentId = firebaseUser?.uid;
+        const tokenEmail = firebaseUser?.email;
+
+        if (bodyAuthStudentId && authStudentId && bodyAuthStudentId !== authStudentId) {
+            res.status(403).json({
+                data: {
+                    success: false,
+                    message: "User ID mismatch with Firebase token",
+                },
+            });
+            return;
+        }
+
+        if (tokenEmail && bodyEmail && tokenEmail.toLowerCase() !== bodyEmail.toLowerCase()) {
+            res.status(403).json({
+                data: {
+                    success: false,
+                    message: "Email mismatch with Firebase token",
+                },
+            });
+            return;
+        }
+
+        const email = tokenEmail || bodyEmail;
+        const name = bodyName || firebaseUser?.name;
+        const image = bodyImage || firebaseUser?.picture;
 
         if (!authStudentId || !email || !name) {
             res.status(400).json({
@@ -93,7 +135,7 @@ router.post("/sync-user", async (req, res) => {
                 id: authStudentId,
                 name: name,
                 email: email,
-                emailVerified: true, // Firebase verifies emails
+                emailVerified: firebaseUser?.email_verified ?? true,
                 image: image,
                 role: "student",
                 fcmToken: fcmToken,

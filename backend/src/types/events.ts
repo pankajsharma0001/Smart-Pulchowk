@@ -1,8 +1,3 @@
-export interface registerStudentForEventInput {
-    authStudentId: string,
-    eventId: number
-}
-
 export interface CreateEventInput {
     title: string;
     description?: string;

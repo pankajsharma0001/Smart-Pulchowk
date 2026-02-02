@@ -353,6 +353,14 @@ export const DeleteBookImage = async (req: Request, res: Response) => {
             });
         }
 
+        const listingId = parseInt(req.params.id);
+        if (isNaN(listingId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid listing ID is required.",
+            });
+        }
+
         const imageId = parseInt(req.params.imageId);
         if (isNaN(imageId)) {
             return res.status(400).json({
@@ -361,7 +369,7 @@ export const DeleteBookImage = async (req: Request, res: Response) => {
             });
         }
 
-        const result = await deleteBookImage(imageId, userId);
+        const result = await deleteBookImage(imageId, listingId, userId);
 
         if (!result.success) {
             const status = result.message?.includes("not authorized") ? 403 : 400;

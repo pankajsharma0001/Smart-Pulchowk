@@ -399,12 +399,13 @@
                 >
                   <div class="grid grid-cols-1 gap-8">
                     <div class="space-y-2">
-                      <!-- svelte-ignore a11y_label_has_associated_control -->
                       <label
                         class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                        for="club-name"
                         >Club Name <span class="text-red-500">*</span></label
                       >
                       <input
+                        id="club-name"
                         type="text"
                         bind:value={name}
                         bind:this={nameInputElement}
@@ -416,10 +417,12 @@
                     <div class="space-y-2">
                       <label
                         class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                        for="club-email"
                         >Contact Email <span class="text-red-500">*</span
                         ></label
                       >
                       <input
+                        id="club-email"
                         type="email"
                         bind:value={email}
                         placeholder="club@pcampus.edu.np"
@@ -430,9 +433,11 @@
                     <div class="space-y-2">
                       <label
                         class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                        for="club-tagline"
                         >Punchline / Tagline</label
                       >
                       <textarea
+                        id="club-tagline"
                         bind:value={description}
                         placeholder="Wait... how would you summarize your club in one line?"
                         rows="3"
@@ -451,9 +456,11 @@
                       <div class="space-y-2">
                         <label
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                          for="club-mission"
                           >Mission</label
                         >
                         <textarea
+                          id="club-mission"
                           bind:value={mission}
                           placeholder="Your core purpose..."
                           rows="4"
@@ -463,9 +470,11 @@
                       <div class="space-y-2">
                         <label
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                          for="club-vision"
                           >Vision</label
                         >
                         <textarea
+                          id="club-vision"
                           bind:value={vision}
                           placeholder="Where are you heading?"
                           rows="4"
@@ -476,9 +485,11 @@
                     <div class="space-y-2">
                       <label
                         class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                        for="club-about"
                         >About Club</label
                       >
                       <textarea
+                        id="club-about"
                         bind:value={aboutClub}
                         placeholder="Brief introduction about your club..."
                         rows="4"
@@ -487,12 +498,13 @@
                     </div>
                     <div class="grid sm:grid-cols-2 gap-6">
                       <div class="space-y-2">
-                        <!-- svelte-ignore a11y_label_has_associated_control -->
                         <label
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                          for="club-benefits"
                           >Member Benefits</label
                         >
                         <textarea
+                          id="club-benefits"
                           bind:value={benefits}
                           placeholder="Why join?"
                           rows="3"
@@ -502,9 +514,11 @@
                       <div class="space-y-2">
                         <label
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                          for="club-achievements"
                           >Achievements</label
                         >
                         <textarea
+                          id="club-achievements"
                           bind:value={achievements}
                           placeholder="What have you achieved?"
                           rows="3"
@@ -514,9 +528,11 @@
                       <div class="space-y-2">
                         <label
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                          for="club-est-year"
                           >Est. Year</label
                         >
                         <input
+                          id="club-est-year"
                           type="number"
                           bind:value={establishedYear}
                           placeholder="2024"
@@ -612,9 +628,11 @@
                       <div class="space-y-2">
                         <label
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                          for="club-website"
                           >Website</label
                         >
                         <input
+                          id="club-website"
                           type="url"
                           bind:value={websiteUrl}
                           placeholder="https://yourclub.com"
@@ -624,9 +642,11 @@
                       <div class="space-y-2">
                         <label
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
+                          for="club-phone"
                           >Phone</label
                         >
                         <input
+                          id="club-phone"
                           type="tel"
                           bind:value={contactPhone}
                           placeholder="+977 98..."
@@ -637,10 +657,11 @@
 
                     <div class="space-y-6">
                       <div class="flex items-center justify-between">
-                        <label
+                        <div
                           class="block text-sm font-black text-gray-700 uppercase tracking-widest px-1"
-                          >Club Logo</label
                         >
+                          Club Logo
+                        </div>
                         <div
                           class="bg-gray-100 p-1.5 rounded-2xl flex gap-1 shadow-inner"
                         >

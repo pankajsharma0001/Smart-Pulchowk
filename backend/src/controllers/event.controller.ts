@@ -40,14 +40,36 @@ export async function getAdmins(req: Request, res: Response) {
 }
 
 export async function addAdmin(req: Request, res: Response) {
-    const { clubId, email, ownerId } = req.body;
-    const result = await addClubAdmin(ownerId, clubId, email);
+    const { clubId, email } = req.body;
+    const ownerId = (req as any).user?.id;
+
+    if (!ownerId) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const clubIdNumber = Number(clubId);
+    if (!clubIdNumber || Number.isNaN(clubIdNumber) || !email) {
+        return res.status(400).json({ success: false, message: "clubId and email are required" });
+    }
+
+    const result = await addClubAdmin(ownerId, clubIdNumber, email);
     return res.json(result);
 }
 
 export async function removeAdmin(req: Request, res: Response) {
-    const { clubId, userId, ownerId } = req.body;
-    const result = await removeClubAdmin(ownerId, clubId, userId);
+    const { clubId, userId } = req.body;
+    const ownerId = (req as any).user?.id;
+
+    if (!ownerId) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const clubIdNumber = Number(clubId);
+    if (!clubIdNumber || Number.isNaN(clubIdNumber) || !userId) {
+        return res.status(400).json({ success: false, message: "clubId and userId are required" });
+    }
+
+    const result = await removeClubAdmin(ownerId, clubIdNumber, userId);
     return res.json(result);
 }
 
@@ -239,12 +261,17 @@ export async function clubEvents(req: Request, res: Response) {
 
 export async function CreateEvent(req: Request, res: Response) {
     try {
-        const { authId, clubId, ...eventData } = req.body;
+        const { clubId, ...eventData } = req.body;
+        const userId = (req as any).user?.id;
 
-        if (!authId || !clubId || !eventData) {
-            throw Error("Id, ClubId and Data are needed");
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
         }
-        const result = await createEvent(authId, parseInt(clubId), eventData);
+
+        if (!clubId || !eventData) {
+            throw Error("ClubId and Data are needed");
+        }
+        const result = await createEvent(userId, parseInt(clubId), eventData);
 
         return res.json({ data: result });
     } catch (error) {
@@ -265,13 +292,19 @@ export async function upcomingEvents(req: Request, res: Response) {
 
 export async function eventRegistration(req: Request, res: Response) {
     try {
-        const registerData = req.body;
+        const { eventId } = req.body;
+        const userId = (req as any).user?.id;
 
-        if (!registerData) {
-            throw Error("Id's are required");
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const result = await registerStudentForEvent(registerData);
+        const eventIdNumber = Number(eventId);
+        if (!eventIdNumber || Number.isNaN(eventIdNumber)) {
+            throw Error("Event Id is required");
+        }
+
+        const result = await registerStudentForEvent(userId, eventIdNumber);
 
         return res.json({ data: result });
 
@@ -299,13 +332,19 @@ export async function registeredStudent(req: Request, res: Response) {
 
 export async function cancelRegistration(req: Request, res: Response) {
     try {
-        const eventDetail = req.body;
+        const { eventId } = req.body;
+        const userId = (req as any).user?.id;
 
-        if (!eventDetail) {
-            throw Error("Detail is required");
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const result = await cancelEventRegistration(eventDetail);
+        const eventIdNumber = Number(eventId);
+        if (!eventIdNumber || Number.isNaN(eventIdNumber)) {
+            throw Error("Event Id is required");
+        }
+
+        const result = await cancelEventRegistration(userId, eventIdNumber);
 
         return res.json({ data: result });
 
@@ -316,13 +355,13 @@ export async function cancelRegistration(req: Request, res: Response) {
 
 export async function eventEnrollment(req: Request, res: Response) {
     try {
-        const { authStudentId } = req.body;
+        const userId = (req as any).user?.id;
 
-        if (!authStudentId) {
+        if (!userId) {
             throw Error("Login First");
         }
 
-        const result = await getStudentActiveRegistration(authStudentId);
+        const result = await getStudentActiveRegistration(userId);
 
         return res.json({ data: result });
     } catch (error) {

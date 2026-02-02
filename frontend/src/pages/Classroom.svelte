@@ -21,7 +21,7 @@
 
   const session = authClient.useSession();
   const sessionUser = $derived(
-    $session.data?.user as { role?: string } | undefined
+    $session.data?.user as { role?: string } | undefined,
   );
   const isTeacher = $derived(sessionUser?.role === "teacher");
   const isAdmin = $derived(sessionUser?.role === "admin");
@@ -342,7 +342,9 @@
   });
 </script>
 
-<div class="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-50 via-white to-blue-50/40 px-4 py-8 sm:px-6 lg:px-10">
+<div
+  class="min-h-[calc(100vh-4rem)] bg-linear-to-b from-slate-50 via-white to-blue-50/40 px-4 py-8 sm:px-6 lg:px-10"
+>
   <div class="max-w-6xl mx-auto space-y-8">
     {#if $session.isPending}
       <div class="flex items-center justify-center py-24">
@@ -426,7 +428,8 @@
                   class="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 shadow-sm"
                 >
                   <p class="text-xs uppercase tracking-wide text-slate-400">
-                    Semester {profileQuery.data?.profile?.currentSemester || "-"}
+                    Semester {profileQuery.data?.profile?.currentSemester ||
+                      "-"}
                   </p>
                   <p class="text-2xl font-semibold text-slate-900">
                     {semesterProgress}%
@@ -888,7 +891,7 @@
                 {assignmentError}
               </div>
             {/if}
-            {#if !teacherSubjectsQuery.isLoading && !(teacherSubjectsQuery.data?.subjects?.length)}
+            {#if !teacherSubjectsQuery.isLoading && !teacherSubjectsQuery.data?.subjects?.length}
               <div
                 class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700"
               >
@@ -901,11 +904,9 @@
               Subject
               <StyledSelect
                 bind:value={assignmentForm.subjectId}
-                placeholder={
-                  teacherSubjectsQuery.data?.subjects?.length
-                    ? "Select subject"
-                    : "Add a subject first"
-                }
+                placeholder={teacherSubjectsQuery.data?.subjects?.length
+                  ? "Select subject"
+                  : "Add a subject first"}
                 options={(teacherSubjectsQuery.data?.subjects || []).map(
                   (subject) => ({
                     value: String(subject.id),
@@ -1010,7 +1011,8 @@
                   {
                     length:
                       facultiesQuery.data?.faculties?.find(
-                        (faculty) => faculty.id === Number(teacherAssign.facultyId),
+                        (faculty) =>
+                          faculty.id === Number(teacherAssign.facultyId),
                       )?.semestersCount || 8,
                   },
                   (_, index) => ({
@@ -1026,11 +1028,9 @@
               Subject
               <StyledSelect
                 bind:value={teacherAssign.subjectId}
-                placeholder={
-                  availableSubjects.length === 0
-                    ? "Select faculty and semester"
-                    : "Select subject"
-                }
+                placeholder={availableSubjects.length === 0
+                  ? "Select faculty and semester"
+                  : "Select subject"}
                 options={availableSubjects.map((subject) => ({
                   value: String(subject.id),
                   label: subject.title,

@@ -262,7 +262,7 @@
         class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4"
       >
         <p class="text-gray-500 text-sm">
-          © 2026 PulchowkX. Built for IOE Pulchowk Campus.
+          Copyright 2026 PulchowkX. Built for IOE Pulchowk Campus.
         </p>
         <div class="flex items-center gap-6">
           <!-- svelte-ignore a11y_invalid_attribute -->

@@ -18,6 +18,7 @@ import {
   uploadAssignmentFileToCloudinary,
 } from "./cloudinary.service.js";
 import { sendToTopic, sendToUser } from "./notification.service.js";
+import { unwrapOne } from "../lib/type-utils.js";
 
 const { ASSIGNMENT_FILES, FOLDERS } = UPLOAD_CONSTANTS;
 
@@ -131,8 +132,9 @@ export async function getStudentProfile(userId: string) {
   }
 
   const now = new Date();
-  const durationMonths = profile.faculty?.semesterDurationMonths || 6;
-  const maxSemesters = profile.faculty?.semestersCount || 8;
+  const faculty = unwrapOne(profile.faculty);
+  const durationMonths = faculty?.semesterDurationMonths || 6;
+  const maxSemesters = faculty?.semestersCount || 8;
 
   let currentSemester = profile.currentSemester;
   let semesterStartDate = profile.semesterStartDate;
@@ -470,11 +472,16 @@ export async function submitAssignmentWork(
     throw new Error("Student profile not found");
   }
 
-  if (assignment.subject.facultyId !== profile.facultyId) {
+  const assignmentSubject = unwrapOne(assignment.subject);
+  if (!assignmentSubject) {
+    throw new Error("Assignment subject not found");
+  }
+
+  if (assignmentSubject.facultyId !== profile.facultyId) {
     throw new Error("You are not enrolled in this faculty");
   }
 
-  if (assignment.subject.semesterNumber !== profile.currentSemester) {
+  if (assignmentSubject.semesterNumber !== profile.currentSemester) {
     throw new Error("This assignment is not in your current semester");
   }
 
@@ -617,10 +624,20 @@ export async function gradeSubmission(
   }
 
   // Verify teacher has access
+  const submissionAssignment = unwrapOne(submission.assignment);
+  if (!submissionAssignment) {
+    throw new Error("Assignment not found");
+  }
+
+  const submissionSubject = unwrapOne(submissionAssignment.subject);
+  if (!submissionSubject) {
+    throw new Error("Subject not found");
+  }
+
   const teacherAccess = await db.query.teacherSubjects.findFirst({
     where: and(
       eq(teacherSubjects.teacherId, teacherId),
-      eq(teacherSubjects.subjectId, submission.assignment.subjectId)
+      eq(teacherSubjects.subjectId, submissionAssignment.subjectId)
     ),
   });
 
@@ -640,7 +657,7 @@ export async function gradeSubmission(
   // Notify student (non-blocking)
   sendToUser(submission.studentId, {
     title: gradeData.status === 'graded' ? 'Assignment Graded!' : 'Assignment Returned',
-    body: `Your submission for "${submission.assignment.title}" has been ${gradeData.status}.`,
+    body: `Your submission for "${submissionAssignment.title}" has been ${gradeData.status}.`,
     data: {
       type: 'grading_update',
       assignmentId: submission.assignmentId.toString(),
@@ -667,6 +684,11 @@ export async function getSubmissionsForExport(
   }
 
   // Verify teacher access
+  const exportSubject = unwrapOne(assignment.subject);
+  if (!exportSubject) {
+    throw new Error("Subject not found");
+  }
+
   const teacherAccess = await db.query.teacherSubjects.findFirst({
     where: and(
       eq(teacherSubjects.teacherId, teacherId),
@@ -693,14 +715,17 @@ export async function getSubmissionsForExport(
 
   return {
     assignmentTitle: assignment.title,
-    subjectTitle: assignment.subject.title,
-    data: results.map(sub => ({
-      Student: sub.student.name,
-      Email: sub.student.email,
+    subjectTitle: exportSubject.title,
+    data: results.map(sub => {
+      const student = unwrapOne(sub.student);
+      return {
+        Student: student?.name || "",
+        Email: student?.email || "",
       Status: sub.status,
       SubmittedAt: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : 'N/A',
       FileUrl: sub.fileUrl || 'N/A',
       Comment: sub.comment || ''
-    }))
+      };
+    })
   };
 }

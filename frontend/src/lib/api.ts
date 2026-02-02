@@ -230,7 +230,7 @@ export async function getAllEvents(): Promise<{ success: boolean; allEvents?: Cl
 }
 
 
-export async function createEvent(authId: string, clubId: number, eventData: {
+export async function createEvent(clubId: number, eventData: {
     title: string;
     description: string;
     eventType: string;
@@ -245,7 +245,7 @@ export async function createEvent(authId: string, clubId: number, eventData: {
 
 
     try {
-        const payload = { authId, clubId, ...eventData };
+        const payload = { clubId, ...eventData };
 
         const bodyString = JSON.stringify(payload);
 
@@ -279,13 +279,13 @@ export async function getClubAdmins(clubId: number): Promise<{ success: boolean;
     }
 }
 
-export async function addClubAdmin(clubId: number, email: string, ownerId: string): Promise<{ success: boolean; message?: string }> {
+export async function addClubAdmin(clubId: number, email: string): Promise<{ success: boolean; message?: string }> {
     try {
         const res = await fetch(`${API_EVENTS}/club/add-admin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ clubId, email, ownerId })
+            body: JSON.stringify({ clubId, email })
         });
         return await res.json();
     } catch (error: any) {
@@ -293,13 +293,13 @@ export async function addClubAdmin(clubId: number, email: string, ownerId: strin
     }
 }
 
-export async function removeClubAdmin(clubId: number, userId: string, ownerId: string): Promise<{ success: boolean; message?: string }> {
+export async function removeClubAdmin(clubId: number, userId: string): Promise<{ success: boolean; message?: string }> {
     try {
         const res = await fetch(`${API_EVENTS}/club/remove-admin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ clubId, userId, ownerId })
+            body: JSON.stringify({ clubId, userId })
         });
         return await res.json();
     } catch (error: any) {
@@ -329,13 +329,13 @@ export async function createClub(clubData: {
     }
 }
 
-export async function registerForEvent(authStudentId: string, eventId: number): Promise<{ success: boolean; message?: string }> {
+export async function registerForEvent(eventId: number): Promise<{ success: boolean; message?: string }> {
     try {
         const res = await fetch(`${API_EVENTS}/register-event`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ authStudentId, eventId }),
+            body: JSON.stringify({ eventId }),
         });
         const json = await res.json();
         return json.data;
@@ -346,13 +346,13 @@ export async function registerForEvent(authStudentId: string, eventId: number): 
 }
 
 
-export async function cancelRegistration(authStudentId: string, eventId: number): Promise<{ success: boolean; message?: string }> {
+export async function cancelRegistration(eventId: number): Promise<{ success: boolean; message?: string }> {
     try {
         const res = await fetch(`${API_EVENTS}/cancel-registration`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ authStudentId, eventId }),
+            body: JSON.stringify({ eventId }),
         });
         const json = await res.json();
         return json.data;
@@ -363,12 +363,12 @@ export async function cancelRegistration(authStudentId: string, eventId: number)
 }
 
 
-export async function getEnrollments(authStudentId: string): Promise<{ success: boolean; registrations?: any[]; message?: string }> {
+export async function getEnrollments(): Promise<{ success: boolean; registrations?: any[]; message?: string }> {
     const res = await fetch(`${API_EVENTS}/enrollment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ authStudentId }),
+        body: JSON.stringify({}),
     });
     const clone = res.clone();
     try {
@@ -381,7 +381,7 @@ export async function getEnrollments(authStudentId: string): Promise<{ success: 
 }
 
 
-export async function getRegisteredStudents(eventId: number): Promise<any> {
+export async function getRegisteredStudents(eventId: number): Promise<{ success: boolean; registrations?: any[]; message?: string }> {
     try {
         const res = await fetch(`${API_EVENTS}/registered-student`, {
             method: 'POST',

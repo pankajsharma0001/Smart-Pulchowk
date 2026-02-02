@@ -2,6 +2,7 @@ import { db } from "../lib/db.js";
 import { eq, and, desc } from "drizzle-orm";
 import { bookPurchaseRequests, bookListings } from "../models/book_buy_sell-schema.js";
 import { sendToUser } from "./notification.service.js";
+import { unwrapOne } from "../lib/type-utils.js";
 
 export const createPurchaseRequest = async (
     listingId: number,
@@ -170,7 +171,12 @@ export const respondToPurchaseRequest = async (
             return { success: false, message: "Request not found." };
         }
 
-        if (request.listing.sellerId !== sellerId) {
+        const requestListing = unwrapOne(request.listing);
+        if (!requestListing) {
+            return { success: false, message: "Listing not found." };
+        }
+
+        if (requestListing.sellerId !== sellerId) {
             return { success: false, message: "You are not authorized to respond to this request." };
         }
 
@@ -194,8 +200,8 @@ export const respondToPurchaseRequest = async (
         sendToUser(request.buyerId, {
             title: accept ? 'Request Accepted!' : 'Request Rejected',
             body: accept
-                ? `Your request for "${request.listing.title}" was accepted! You can now see the seller's contact info.`
-                : `Your request for "${request.listing.title}" was rejected.`,
+                ? `Your request for "${requestListing.title}" was accepted! You can now see the seller's contact info.`
+                : `Your request for "${requestListing.title}" was rejected.`,
             data: {
                 type: 'request_response',
                 listingId: request.listingId.toString(),
@@ -271,7 +277,12 @@ export const deletePurchaseRequest = async (requestId: number, userId: string) =
         }
 
         // Allow both buyer and seller to delete/cancel
-        if (request.buyerId !== userId && request.listing.sellerId !== userId) {
+        const listing = unwrapOne(request.listing);
+        if (!listing) {
+            return { success: false, message: "Listing not found." };
+        }
+
+        if (request.buyerId !== userId && listing.sellerId !== userId) {
             return { success: false, message: "You are not authorized to delete this request." };
         }
 

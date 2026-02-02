@@ -1,9 +1,77 @@
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "../lib/auth.js";
 import { Request, Response, NextFunction } from "express";
+import admin from "firebase-admin";
+import fs from "fs";
+import path from "path";
 import { db } from "../lib/db.js";
 import { user } from "../models/auth-schema.js";
 import { eq } from "drizzle-orm";
+import ENV from "../config/ENV.js";
+
+const getAuthToken = (req: Request): string | null => {
+    const authHeader = req.headers["authorization"];
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        return authHeader.slice("Bearer ".length).trim();
+    }
+
+    const queryToken = req.query.token as string | undefined;
+    return queryToken || null;
+};
+
+const loadFirebaseServiceAccount = () => {
+    try {
+        if (ENV.FIREBASE_SERVICE_ACCOUNT_JSON) {
+            return JSON.parse(ENV.FIREBASE_SERVICE_ACCOUNT_JSON);
+        }
+
+        if (ENV.FIREBASE_SERVICE_ACCOUNT_PATH) {
+            const keyPath = ENV.FIREBASE_SERVICE_ACCOUNT_PATH;
+            const absolutePath = path.isAbsolute(keyPath)
+                ? keyPath
+                : path.join(process.cwd(), keyPath);
+
+            if (fs.existsSync(absolutePath)) {
+                return JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+            }
+        }
+    } catch (error) {
+        console.error("Failed to load Firebase service account:", error);
+    }
+
+    return null;
+};
+
+const getFirebaseAdmin = () => {
+    if (admin.apps.length > 0) {
+        return admin;
+    }
+
+    const serviceAccount = loadFirebaseServiceAccount();
+    if (!serviceAccount) {
+        return null;
+    }
+
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+    });
+
+    return admin;
+};
+
+const verifyFirebaseToken = async (token: string) => {
+    const firebaseAdmin = getFirebaseAdmin();
+    if (!firebaseAdmin) {
+        return null;
+    }
+
+    try {
+        return await firebaseAdmin.auth().verifyIdToken(token);
+    } catch (error) {
+        console.warn("Firebase token verification failed:", error);
+        return null;
+    }
+};
 
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
     const session = await auth.api.getSession({
@@ -16,23 +84,27 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
         return next();
     }
 
-    // Fallback for Mobile App: Check Authorization header or query param for User ID
-    const authHeader = req.headers['authorization'];
-    const queryToken = req.query.token as string;
-    const userId = (authHeader && authHeader.startsWith('Bearer '))
-        ? authHeader.split(' ')[1]
-        : queryToken;
-
-    if (userId) {
+    const token = getAuthToken(req);
+    if (token) {
         try {
-            const dbUser = await db.query.user.findFirst({
-                where: eq(user.id, userId),
-            });
+            const decoded = await verifyFirebaseToken(token);
 
-            if (dbUser) {
-                (req as any).user = dbUser;
-                (req as any).session = { userId: dbUser.id }; // Mock session
-                return next();
+            if (decoded) {
+                let dbUser = await db.query.user.findFirst({
+                    where: eq(user.id, decoded.uid),
+                });
+
+                if (!dbUser && decoded.email) {
+                    dbUser = await db.query.user.findFirst({
+                        where: eq(user.email, decoded.email),
+                    });
+                }
+
+                if (dbUser) {
+                    (req as any).user = dbUser;
+                    (req as any).session = { userId: dbUser.id, authType: "firebase" };
+                    return next();
+                }
             }
         } catch (error) {
             console.error("Auth middleware error:", error);
@@ -51,22 +123,26 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
         (req as any).user = session.user;
         (req as any).session = session.session;
     } else {
+        const token = getAuthToken(req);
 
-        const authHeader = req.headers['authorization'];
-        const queryToken = req.query.token as string;
-        const userId = (authHeader && authHeader.startsWith('Bearer '))
-            ? authHeader.split(' ')[1]
-            : queryToken;
-
-        if (userId) {
+        if (token) {
             try {
-                const dbUser = await db.query.user.findFirst({
-                    where: eq(user.id, userId),
-                });
+                const decoded = await verifyFirebaseToken(token);
+                if (decoded) {
+                    let dbUser = await db.query.user.findFirst({
+                        where: eq(user.id, decoded.uid),
+                    });
 
-                if (dbUser) {
-                    (req as any).user = dbUser;
-                    (req as any).session = { userId: dbUser.id };
+                    if (!dbUser && decoded.email) {
+                        dbUser = await db.query.user.findFirst({
+                            where: eq(user.email, decoded.email),
+                        });
+                    }
+
+                    if (dbUser) {
+                        (req as any).user = dbUser;
+                        (req as any).session = { userId: dbUser.id, authType: "firebase" };
+                    }
                 }
             } catch (error) {
                 console.error("Auth middleware error:", error);
@@ -75,6 +151,21 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     }
 
     next();
+};
+
+export const requireFirebaseAuth = async (req: Request, res: Response, next: NextFunction) => {
+    const token = getAuthToken(req);
+    if (!token) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const decoded = await verifyFirebaseToken(token);
+    if (!decoded) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    (req as any).firebaseUser = decoded;
+    return next();
 };
 
 export const requireAdmin = async (req: Request, res: Response, next: NextFunction) => {

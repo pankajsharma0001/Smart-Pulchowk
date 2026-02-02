@@ -247,17 +247,13 @@
   }
 
   async function handleAddAdmin() {
-    if (!newAdminEmail || !club?.authClubId) return;
+    if (!newAdminEmail || !club) return;
 
     adminLoading = true;
     adminError = null;
 
     try {
-      const result = await addClubAdmin(
-        parseInt(clubId),
-        newAdminEmail,
-        club.authClubId,
-      );
+      const result = await addClubAdmin(parseInt(clubId), newAdminEmail);
       if (result.success) {
         newAdminEmail = "";
         await loadAdmins();
@@ -272,7 +268,7 @@
   }
 
   async function handleRemoveAdmin(userId: string) {
-    if (!club?.authClubId) return;
+    if (!club) return;
 
     if (!confirm("Are you sure you want to remove this admin?")) return;
 
@@ -280,11 +276,7 @@
     adminError = null;
 
     try {
-      const result = await removeClubAdmin(
-        parseInt(clubId),
-        userId,
-        club.authClubId,
-      );
+      const result = await removeClubAdmin(parseInt(clubId), userId);
       if (result.success) {
         await loadAdmins();
       } else {

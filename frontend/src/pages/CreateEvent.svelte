@@ -239,7 +239,6 @@
       let initialBannerUrl = bannerSource === "url" ? bannerUrl : undefined;
 
       const result = await createEvent(
-        $session.data.user.id,
         parseInt(clubId),
         {
           title,
@@ -482,10 +481,11 @@
             <form onsubmit={handleExtraDetailsSubmit} class="space-y-6">
               <div class="grid md:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                  <label class="block text-black font-bold mb-2"
+                  <label class="block text-black font-bold mb-2" for="full-description"
                     >Full Description</label
                   >
                   <textarea
+                    id="full-description"
                     bind:value={fullDescription}
                     placeholder="Provide a detailed overview of the event..."
                     rows="4"
@@ -493,10 +493,11 @@
                   ></textarea>
                 </div>
                 <div class="space-y-2">
-                  <label class="block text-black font-bold mb-2"
+                  <label class="block text-black font-bold mb-2" for="objectives"
                     >Objectives</label
                   >
                   <textarea
+                    id="objectives"
                     bind:value={objectives}
                     placeholder="What are the goals of this event?"
                     rows="4"
@@ -507,10 +508,11 @@
 
               <div class="grid md:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                  <label class="block text-black font-bold mb-2"
+                  <label class="block text-black font-bold mb-2" for="target-audience"
                     >Target Audience</label
                   >
                   <textarea
+                    id="target-audience"
                     bind:value={targetAudience}
                     placeholder="Who should attend? (e.g., Energetic students, Tech enthusiasts...)"
                     rows="4"
@@ -518,10 +520,11 @@
                   ></textarea>
                 </div>
                 <div class="space-y-2">
-                  <label class="block text-black font-bold mb-2"
+                  <label class="block text-black font-bold mb-2" for="prerequisites"
                     >Prerequisites</label
                   >
                   <textarea
+                    id="prerequisites"
                     bind:value={prerequisites}
                     placeholder="Any requirements or skills needed? (e.g., Basic Python, Enthusiasm...)"
                     rows="4"
@@ -532,10 +535,11 @@
 
               <div class="grid md:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                  <label class="block text-black font-bold mb-2"
+                  <label class="block text-black font-bold mb-2" for="event-rules"
                     >Event Rules</label
                   >
                   <textarea
+                    id="event-rules"
                     bind:value={rules}
                     placeholder="List the do's and don'ts..."
                     rows="4"
@@ -543,10 +547,11 @@
                   ></textarea>
                 </div>
                 <div class="space-y-2">
-                  <label class="block text-black font-bold mb-2"
+                  <label class="block text-black font-bold mb-2" for="judging-criteria"
                     >Judging Criteria</label
                   >
                   <textarea
+                    id="judging-criteria"
                     bind:value={judgingCriteria}
                     placeholder="How will participants be evaluated?"
                     rows="4"
@@ -677,11 +682,11 @@
                 >
                   <div class="space-y-6">
                     <div>
-                      <!-- svelte-ignore a11y_label_has_associated_control -->
-                      <label class="block text-black font-bold mb-2"
+                      <label class="block text-black font-bold mb-2" for="event-title"
                         >Event Title <span class="text-red-500">*</span></label
                       >
                       <Input
+                        id="event-title"
                         bind:value={title}
                         placeholder="What's the big announcement?"
                         class="bg-white/50 border-gray-200 focus:ring-blue-500/20 rounded-2xl py-4 shadow-sm placeholder:text-gray-400/70"
@@ -689,12 +694,12 @@
                       />
                     </div>
                     <div>
-                      <!-- svelte-ignore a11y_label_has_associated_control -->
-                      <label class="block text-black font-bold mb-2"
+                      <label class="block text-black font-bold mb-2" for="event-category"
                         >Event Category <span class="text-red-500">*</span
                         ></label
                       >
                       <select
+                        id="event-category"
                         bind:value={eventType}
                         class="w-full bg-white/50 border border-gray-200 hover:border-blue-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl py-4 px-4 transition-all appearance-none outline-none shadow-sm"
                       >
@@ -704,10 +709,11 @@
                       </select>
                     </div>
                     <div>
-                      <label class="block text-black font-bold mb-2"
+                      <label class="block text-black font-bold mb-2" for="event-description"
                         >Short Description</label
                       >
                       <textarea
+                        id="event-description"
                         bind:value={description}
                         placeholder="Tell short description about the event..."
                         rows="6"
@@ -724,62 +730,68 @@
                   <div class="space-y-8">
                     <div class="grid sm:grid-cols-2 gap-6">
                       <div class="space-y-2">
-                        <label class="block text-black font-bold mb-2"
-                          >Start Schedule <span class="text-red-500">*</span
-                          ></label
-                        >
-                        <div class="flex gap-2">
-                          <Datepicker
-                            bind:value={startDate}
+                      <div class="block text-black font-bold mb-2">
+                        Start Schedule <span class="text-red-500">*</span>
+                      </div>
+                      <div class="flex gap-2">
+                        <Datepicker
+                          bind:value={startDate}
+                          aria-label="Start date"
+                          required
+                          class="rounded-2xl flex-1 shadow-sm"
+                        />
+                        <div class="w-32 shadow-sm">
+                          <label class="sr-only" for="event-start-time">Start time</label>
+                          <Timepicker
+                            id="event-start-time"
+                            bind:value={startTime}
                             required
-                            class="rounded-2xl flex-1 shadow-sm"
+                            inputClass="rounded-2xl"
                           />
-                          <div class="w-32 shadow-sm">
-                            <Timepicker
-                              bind:value={startTime}
-                              required
-                              inputClass="rounded-2xl"
-                            />
-                          </div>
                         </div>
                       </div>
+                      </div>
                       <div class="space-y-2">
-                        <label class="block text-black font-bold mb-2"
-                          >End Schedule <span class="text-red-500">*</span
-                          ></label
-                        >
-                        <div class="flex gap-2">
-                          <Datepicker
-                            bind:value={endDate}
+                      <div class="block text-black font-bold mb-2">
+                        End Schedule <span class="text-red-500">*</span>
+                      </div>
+                      <div class="flex gap-2">
+                        <Datepicker
+                          bind:value={endDate}
+                          aria-label="End date"
+                          required
+                          class="rounded-2xl flex-1 shadow-sm"
+                        />
+                        <div class="w-32 shadow-sm">
+                          <label class="sr-only" for="event-end-time">End time</label>
+                          <Timepicker
+                            id="event-end-time"
+                            bind:value={endTime}
                             required
-                            class="rounded-2xl flex-1 shadow-sm"
+                            inputClass="rounded-2xl"
                           />
-                          <div class="w-32 shadow-sm">
-                            <Timepicker
-                              bind:value={endTime}
-                              required
-                              inputClass="rounded-2xl"
-                            />
-                          </div>
                         </div>
+                      </div>
                       </div>
                     </div>
                     <div class="grid sm:grid-cols-2 gap-6">
                       <div>
-                        <label class="block text-black font-bold mb-2"
+                        <label class="block text-black font-bold mb-2" for="event-venue"
                           >Location / Venue</label
                         >
                         <Input
+                          id="event-venue"
                           bind:value={venue}
                           placeholder="Where is it happening?"
                           class="bg-white/50 border-gray-200 rounded-2xl py-4 shadow-sm placeholder:text-gray-400/70"
                         />
                       </div>
                       <div>
-                        <label class="block text-black font-bold mb-2"
+                        <label class="block text-black font-bold mb-2" for="event-capacity"
                           >Capacity</label
                         >
                         <Input
+                          id="event-capacity"
                           type="number"
                           bind:value={maxParticipants}
                           placeholder="Seats available (Optional)"
@@ -797,9 +809,9 @@
                   <div class="space-y-8">
                     <div class="space-y-4">
                       <div class="flex items-center justify-between">
-                        <label class="block text-black font-bold mb-2"
-                          >Feature Image</label
-                        >
+                        <div class="block text-black font-bold mb-2">
+                          Feature Image
+                        </div>
                         <div
                           class="bg-gray-100 p-1 rounded-xl flex gap-1 shadow-inner"
                         >
@@ -825,6 +837,7 @@
 
                       {#if bannerSource === "url"}
                         <Input
+                          aria-label="Feature image URL"
                           type="url"
                           bind:value={bannerUrl}
                           placeholder="https://example.com/banner.png"
@@ -839,6 +852,7 @@
                             onchange={handleFileChange}
                             accept="image/*"
                             class="absolute inset-0 opacity-0 cursor-pointer z-10"
+                            aria-label="Upload feature image"
                           />
                           <svg
                             class="mx-auto w-10 h-10 text-gray-300 group-hover:text-blue-500 mb-4"
@@ -864,10 +878,9 @@
                     </div>
 
                     <div class="space-y-4 pt-4 border-t border-gray-100">
-                      <label class="block text-black font-bold mb-2"
-                        >Registration Method <span class="text-red-500">*</span
-                        ></label
-                      >
+                      <div class="block text-black font-bold mb-2">
+                        Registration Method <span class="text-red-500">*</span>
+                      </div>
                       <div class="grid grid-cols-1 gap-4">
                         <button
                           type="button"
@@ -896,11 +909,12 @@
 
                       {#if registrationMethod === "external"}
                         <div in:slide>
-                          <label class="block text-black font-bold mb-2"
+                          <label class="block text-black font-bold mb-2" for="external-form-link"
                             >Form Link <span class="text-red-500">*</span
                             ></label
                           >
                           <Input
+                            id="external-form-link"
                             type="url"
                             bind:value={externalRegistrationLink}
                             placeholder="https://forms.google.com/your-form"
@@ -916,18 +930,21 @@
                     </div>
 
                     <div>
-                      <label class="block text-black font-bold mb-2"
-                        >Registration Closes On <span class="text-red-500"
-                          >*</span
-                        ></label
-                      >
+                      <div class="block text-black font-bold mb-2">
+                        Registration Closes On <span class="text-red-500">*</span>
+                      </div>
                       <div class="flex gap-2">
                         <Datepicker
                           bind:value={regDate}
+                          aria-label="Registration close date"
                           class="rounded-2xl flex-1 shadow-sm"
                         />
                         <div class="w-32 shadow-sm">
+                          <label class="sr-only" for="event-registration-time">
+                            Registration close time
+                          </label>
                           <Timepicker
+                            id="event-registration-time"
                             bind:value={regTime}
                             inputClass="rounded-2xl"
                           />
@@ -1154,23 +1171,5 @@
   :global(.datepicker) {
     --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1),
       0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
-  }
-
-  /* Custom animation for error transition */
-  @keyframes shake {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-    25% {
-      transform: translateX(-4px);
-    }
-    75% {
-      transform: translateX(4px);
-    }
-  }
-
-  div[in\:shake] {
-    animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   }
 </style>

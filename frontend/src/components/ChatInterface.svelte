@@ -26,7 +26,7 @@
     let messageInput = $state("");
     let sendingMessage = $state(false);
     let pollingInterval: ReturnType<typeof setInterval> | null = null;
-    let messagesContainer: HTMLDivElement;
+    let messagesContainer = $state<HTMLDivElement | null>(null);
 
     // Delete conversation state
     let showDeleteModal = $state(false);
@@ -100,9 +100,10 @@
 
     // Scroll to bottom when messages change
     $effect(() => {
-        if (messagesQuery.data && messagesContainer) {
+        const container = messagesContainer;
+        if (messagesQuery.data && container) {
             setTimeout(() => {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                container.scrollTop = container.scrollHeight;
             }, 100);
         }
     });
@@ -372,7 +373,7 @@
                                     <p
                                         class="text-xs text-blue-600 truncate mt-0.5"
                                     >
-                                        📚 {conv.listing.title}
+                                        Book: {conv.listing.title}
                                     </p>
                                 {/if}
                                 {#if lastMessage}
@@ -424,6 +425,7 @@
                     <!-- Back button (mobile) -->
                     <button
                         onclick={() => (selectedConversationId = null)}
+                        aria-label="Back"
                         class="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700"
                     >
                         <svg

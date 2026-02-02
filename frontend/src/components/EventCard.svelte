@@ -62,7 +62,7 @@
       <div
         class="w-full h-full bg-linear-to-br from-gray-800 to-gray-900 flex items-center justify-center"
       >
-        <span class="text-5xl opacity-40">📅</span>
+        <span class="text-2xl font-semibold text-white/70">Event</span>
       </div>
     {/if}
 
@@ -201,6 +201,7 @@
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }

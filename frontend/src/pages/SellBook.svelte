@@ -658,6 +658,7 @@
                                                         type="button"
                                                         onclick={() =>
                                                             removeImage(i)}
+                                                        aria-label="Remove image"
                                                         class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 text-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-600 hover:text-white"
                                                     >
                                                         <svg
