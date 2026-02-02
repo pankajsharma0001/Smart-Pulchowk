@@ -505,8 +505,14 @@
       day: "numeric",
       year: "numeric",
     });
-    const startTime = formatEventTime(startStr, { hour: "numeric", minute: "2-digit" });
-    const endTime = formatEventTime(endStr, { hour: "numeric", minute: "2-digit" });
+    const startTime = formatEventTime(startStr, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const endTime = formatEventTime(endStr, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
     if (sameDay) {
       return `${startDate} ${startTime} - ${endTime}`;
     }
@@ -639,18 +645,18 @@
     {:else if event}
       <!-- Event Banner -->
       <div
-        class="relative h-72 sm:h-96 rounded-3xl overflow-hidden mb-8 shadow-2xl group"
+        class="relative w-full rounded-3xl overflow-hidden mb-8 shadow-2xl group bg-gray-900"
         in:fly={{ y: 20, duration: 600 }}
       >
         {#if event.bannerUrl}
           <img
             src={event.bannerUrl}
             alt={event.title}
-            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            class="w-full h-auto max-h-[500px] object-cover transition-transform duration-700 group-hover:scale-[1.03]"
           />
         {:else}
           <div
-            class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 via-gray-900 to-black"
+            class="w-full h-64 flex items-center justify-center bg-gradient-to-br from-gray-800 via-gray-900 to-black"
           >
             <svg
               class="w-24 h-24 text-white/20"
@@ -670,7 +676,7 @@
 
         <!-- Gradient Overlay for Text Readability -->
         <div
-          class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          class="absolute inset-0 bg-linear-to-t from-black/40 to-transparent"
         ></div>
 
         <!-- Status Badge - Top Right -->
@@ -1254,9 +1260,9 @@
                 </p>
                 <p class="font-semibold text-gray-900 mt-1">
                   {formatDateRange(
-                    event.eventStartTime,
-                    event.eventEndTime,
-                  )}
+                  event.eventStartTime,
+                   event.eventEndTime
+                   )}
                 </p>
               </div>
             </div>
