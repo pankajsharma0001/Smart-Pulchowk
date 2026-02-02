@@ -4,6 +4,7 @@ import { user } from "../models/auth-schema.js";
 import { bookListings, bookPurchaseRequests } from "../models/book_buy_sell-schema.js";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { sendToUser } from "./notification.service.js";
+import { emitNewMessage, emitMessageNotification, isUserViewingConversation } from "./socket.service.js";
 
 export const sendMessage = async (senderId: string, listingId: number, content: string, buyerId?: string) => {
     try {
@@ -76,21 +77,43 @@ export const sendMessage = async (senderId: string, listingId: number, content: 
             })
             .where(eq(conversations.id, conversation.id));
 
-        // 5. Send notification to recipient
+        // 5. Get sender info for notifications
         const recipientId = senderId === sellerId ? conversation.buyerId : sellerId;
         const sender = await db.query.user.findFirst({ where: eq(user.id, senderId) });
 
-        sendToUser(recipientId, {
-            title: sender?.name || "New Message",
-            body: content,
-            data: {
-                type: 'chat_message',
-                conversationId: conversation.id.toString(),
+        // 6. Emit real-time WebSocket event to conversation room
+        emitNewMessage(conversation.id, {
+            id: newMessage.id,
+            conversationId: conversation.id,
+            senderId,
+            senderName: sender?.name || "Unknown",
+            content,
+            createdAt: newMessage.createdAt,
+        });
+
+        // 7. Send push notification only if recipient is NOT viewing the conversation
+        if (!isUserViewingConversation(recipientId, conversation.id)) {
+            // Also emit a notification event via WebSocket
+            emitMessageNotification(recipientId, {
+                conversationId: conversation.id,
                 senderId,
                 senderName: sender?.name || "Someone",
-                content: content,
-            }
-        });
+                content,
+            });
+
+            // Send FCM push notification
+            sendToUser(recipientId, {
+                title: sender?.name || "New Message",
+                body: content,
+                data: {
+                    type: 'chat_message',
+                    conversationId: conversation.id.toString(),
+                    senderId,
+                    senderName: sender?.name || "Someone",
+                    content: content,
+                }
+            });
+        }
 
         return { success: true, data: newMessage };
     } catch (error) {

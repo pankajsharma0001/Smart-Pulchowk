@@ -1,6 +1,7 @@
 import { toNodeHandler } from 'better-auth/node'
 import express from 'express'
 import path from 'path'
+import { createServer } from 'http'
 import { auth } from './lib/auth.js'
 import ENV from './config/ENV.js'
 import eventRoutes from './routes/events.route.js'
@@ -10,8 +11,13 @@ import userRoutes from './routes/user.route.js'
 import bookRoutes from './routes/books.route.js'
 import classroomRoutes from './routes/classroom.route.js'
 import chatRoutes from './routes/chat.route.js'
+import { initializeSocketIO } from './services/socket.service.js'
 
 const app = express()
+const httpServer = createServer(app)
+
+// Initialize Socket.IO for real-time chat
+initializeSocketIO(httpServer)
 
 const __dirname = import.meta.dirname
 
@@ -31,6 +37,6 @@ app.get('/{*splat}', async (_, res) =>
   res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'))
 )
 
-if (ENV.MODE === "DEV") app.listen(3000, () => console.log(`Server is running on port 3000 in ${ENV.MODE} mode`))
+if (ENV.MODE === "DEV") httpServer.listen(3000, () => console.log(`Server is running on port 3000 in ${ENV.MODE} mode`))
 
 export default app
