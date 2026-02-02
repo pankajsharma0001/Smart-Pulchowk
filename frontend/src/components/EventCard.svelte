@@ -92,16 +92,14 @@
       class="absolute bottom-4 left-4 right-4 flex items-end justify-between"
     >
       <div
-        class="bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-xl flex flex-col items-center min-w-15"
+        class="bg-white/95 backdrop-blur-sm px-3 py-2 rounded-2xl shadow-xl flex items-center"
       >
-        <span class="text-[10px] font-bold text-blue-600 uppercase mb-0.5"
-          >{parseEventDateTime(event.eventStartTime).toLocaleDateString("en-US", {
+        <span class="text-[11px] font-bold text-blue-600 uppercase whitespace-nowrap">
+          {parseEventDateTime(event.eventStartTime).toLocaleDateString("en-US", {
             month: "short",
-          })}</span
-        >
-        <span class="text-xl font-black text-gray-900 leading-none"
-          >{parseEventDateTime(event.eventStartTime).getDate()}</span
-        >
+            day: "numeric",
+          })}
+        </span>
       </div>
     </div>
   </div>
