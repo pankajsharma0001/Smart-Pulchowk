@@ -646,14 +646,14 @@
     {:else if event}
       <!-- Event Banner -->
       <div
-        class="relative w-full rounded-3xl overflow-hidden mb-8 shadow-2xl group bg-gray-900"
+        class="relative w-full h-72 sm:h-[420px] lg:h-[560px] rounded-3xl overflow-hidden mb-8 shadow-2xl group bg-gray-900"
         in:fly={{ y: 20, duration: 600 }}
       >
         {#if event.bannerUrl}
           <img
             src={event.bannerUrl}
             alt={event.title}
-            class="w-full h-auto max-h-[500px] object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
           />
         {:else}
           <div
