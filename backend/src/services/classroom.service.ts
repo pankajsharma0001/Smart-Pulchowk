@@ -723,10 +723,10 @@ export async function getSubmissionsForExport(
       return {
         Student: student?.name || "",
         Email: student?.email || "",
-      Status: sub.status,
-      SubmittedAt: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : 'N/A',
-      FileUrl: sub.fileUrl || 'N/A',
-      Comment: sub.comment || ''
+        Status: sub.status,
+        SubmittedAt: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : 'N/A',
+        FileUrl: sub.fileUrl || 'N/A',
+        Comment: sub.comment || ''
       };
     })
   };

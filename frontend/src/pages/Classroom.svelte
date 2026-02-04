@@ -539,7 +539,8 @@
               ></div>
             </div>
             <p class="text-xs text-slate-500">
-              Semester automatically detected from your roll number. Auto-advance is
+              Semester automatically detected from your roll number.
+              Auto-advance is
               {profileQuery.data.profile.autoAdvance
                 ? " enabled."
                 : " disabled."}
@@ -560,8 +561,10 @@
                   Profile not set up
                 </h2>
                 <p class="text-sm text-slate-600">
-                  Your semester profile will be automatically created when you sign in with your Pulchowk Campus email (e.g., 079bct070.name@pcampus.edu.np). 
-                  Please sign out and sign in again with a valid student email.
+                  Your semester profile will be automatically created when you
+                  sign in with your Pulchowk Campus email (e.g.,
+                  079bct070.name@pcampus.edu.np). Please sign out and sign in
+                  again with a valid student email.
                 </p>
               </div>
             </div>

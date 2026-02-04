@@ -7,22 +7,15 @@
  * - Even semesters (2, 4, 6, 8, 10): Start on Mangsir 15 BS
  */
 
-import { adToBs as pkgAdToBs, bsToAd as pkgBsToAd } from '@sbmdkl/nepali-date-converter';
-
-export interface BSDate {
-    year: number;
-    month: number; // 1-12 (Baisakh=1, Mangsir=8)
-    day: number;
-}
-
-/**
- * Convert Bikram Sambat date to Gregorian (AD) date
+// Use default import for ESM compatibility
+import nepaliDateConverter from '@sbmdkl/nepali-date-converter';
+const { adToBs: pkgAdToBs, bsToAd: pkgBsToAd } = nepaliDateConverter;
  */
 export function bsToAd(bsYear: number, bsMonth: number, bsDay: number): Date {
     // Package expects YYYY-MM-DD format
     const bsDateStr = `${bsYear}-${String(bsMonth).padStart(2, '0')}-${String(bsDay).padStart(2, '0')}`;
     const adDateStr = pkgBsToAd(bsDateStr); // Returns "YYYY-MM-DD"
-    
+
     const [year, month, day] = adDateStr.split('-').map(Number);
     return new Date(year, month - 1, day); // Month is 0-indexed in JS Date
 }
@@ -34,11 +27,11 @@ export function adToBs(adDate: Date): BSDate {
     const year = adDate.getFullYear();
     const month = adDate.getMonth() + 1; // Convert from 0-indexed
     const day = adDate.getDate();
-    
+
     // Package expects YYYY-MM-DD format
     const adDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const bsDateStr = pkgAdToBs(adDateStr); // Returns "YYYY-MM-DD"
-    
+
     const [bsYear, bsMonth, bsDay] = bsDateStr.split('-').map(Number);
     return { year: bsYear, month: bsMonth, day: bsDay };
 }
@@ -118,7 +111,7 @@ export function calculateCurrentSemester(
 export function getSemesterEndDate(batchYearBS: number, semesterNumber: number): Date {
     // Convert 2-digit year to 4-digit
     const fullBatchYear = batchYearBS < 100 ? 2000 + batchYearBS : batchYearBS;
-    
+
     const isOddSemester = semesterNumber % 2 === 1;
     const semYear = fullBatchYear + Math.floor((semesterNumber - 1) / 2);
 
