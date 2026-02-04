@@ -924,60 +924,81 @@
 
                     {#if activeSubmissionId === assignment.id}
                       <div
-                        class="mt-4 pt-4 border-t border-slate-100 animate-fade-in bg-slate-50 rounded-lg p-4 -mx-2 sm:mx-0"
+                        class="mt-4 pt-4 border-t border-slate-100 animate-fade-in bg-slate-50/50 rounded-2xl p-5"
                       >
-                        <h4 class="text-sm font-semibold text-slate-900 mb-3">
+                        <h4 class="text-sm font-bold text-slate-900 mb-4">
                           Submit Assignment
                         </h4>
-                        <div class="space-y-3">
+                        <div class="space-y-4">
                           <div>
                             <!-- svelte-ignore a11y_label_has_associated_control -->
                             <label
-                              class="block text-xs font-medium text-slate-700 mb-1"
+                              class="block text-xs font-semibold text-slate-600 mb-2"
                               >File (Image/PDF)</label
                             >
-                            <input
-                              type="file"
-                              accept="image/*,application/pdf"
-                              class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                              onchange={(event) => {
-                                const target = event.target as HTMLInputElement;
-                                submissionFile = target.files
-                                  ? target.files[0]
-                                  : null;
-                              }}
-                            />
+                            <label
+                              class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer bg-white hover:bg-slate-50 hover:border-blue-300 transition-colors"
+                            >
+                              <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                {#if submissionFile}
+                                  <p class="text-sm font-medium text-blue-600">{submissionFile.name}</p>
+                                  <p class="text-xs text-slate-500">Click to change file</p>
+                                {:else}
+                                  <p class="text-sm text-slate-500"><span class="font-semibold text-blue-600">Click to upload</span> or drag and drop</p>
+                                  <p class="text-xs text-slate-400">PNG, JPG or PDF</p>
+                                {/if}
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                class="hidden"
+                                onchange={(event) => {
+                                  const target = event.target as HTMLInputElement;
+                                  submissionFile = target.files
+                                    ? target.files[0]
+                                    : null;
+                                }}
+                              />
+                            </label>
                           </div>
                           <!-- svelte-ignore a11y_label_has_associated_control -->
                           <div>
                             <label
-                              class="block text-xs font-medium text-slate-700 mb-1"
+                              class="block text-xs font-semibold text-slate-600 mb-2"
                               >Comment (Optional)</label
                             >
                             <textarea
                               rows="2"
-                              class="w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm placeholder:text-slate-400 resize-none"
                               placeholder="Add a note..."
                               bind:value={submissionComment}
                             ></textarea>
                           </div>
 
                           {#if submissionError}
-                            <p class="text-xs text-rose-600 font-medium">
-                              {submissionError}
-                            </p>
+                            <div class="flex items-center gap-2 p-3 bg-rose-50 border border-rose-100 rounded-xl">
+                              <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <p class="text-xs text-rose-600 font-medium">
+                                {submissionError}
+                              </p>
+                            </div>
                           {/if}
 
-                          <div class="flex gap-2 pt-2">
+                          <div class="flex gap-3 pt-2">
                             <button
-                              class="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              class="bg-blue-600 text-white text-sm px-5 py-2.5 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm shadow-blue-200"
                               onclick={() => handleSubmit(assignment)}
                               disabled={submissionLoading}
                             >
                               {submissionLoading ? "Submitting..." : "Turn In"}
                             </button>
                             <button
-                              class="bg-white border border-slate-300 text-slate-700 text-sm px-4 py-2 rounded-lg font-medium hover:bg-slate-50"
+                              class="bg-white border border-slate-200 text-slate-700 text-sm px-5 py-2.5 rounded-xl font-semibold hover:bg-slate-50 transition-colors"
                               onclick={() => (activeSubmissionId = null)}
                             >
                               Cancel
