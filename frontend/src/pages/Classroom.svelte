@@ -433,19 +433,6 @@
               ? "System overview and administrative controls."
               : "Stay on top of your coursework. Track assignments, deadlines, and submissions in one hub."}
         </p>
-
-        {#if isStudent && profileQuery.data?.profile}
-          <div
-            class="mt-6 inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white border border-slate-200 shadow-sm"
-          >
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
-            ></span>
-            <span class="font-bold text-slate-700"
-              >{profileQuery.data.profile.faculty?.name || "BS"}-{profileQuery
-                .data.profile.currentSemester}</span
-            >
-          </div>
-        {/if}
       </div>
 
       {#if !isAdmin}
@@ -688,6 +675,11 @@
               <p class="text-3xl font-black text-slate-900 mb-1 tracking-tight">
                 {semesterProgress}%
               </p>
+              <p
+                class="text-sm font-bold uppercase text-slate-400 tracking-wide"
+              >
+                Progress
+              </p>
               <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2">
                 <div
                   class="bg-amber-500 h-1.5 rounded-full"
@@ -835,7 +827,7 @@
               {@const assignmentsToShow =
                 studentView === "todo" ? todoAssignments : doneAssignments}
 
-              <div class="space-y-4 max-w-4xl">
+              <div class="space-y-4 max-w-4xl mx-auto">
                 {#each assignmentsToShow as assignment}
                   <div
                     class="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg hover:shadow-slate-200/50 p-6 transition-all duration-300 group"
