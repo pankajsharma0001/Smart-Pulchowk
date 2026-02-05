@@ -166,12 +166,50 @@
     name: string | null,
   ): 'image' | 'pdf' {
     if (!url) return 'image'
+    const lowerUrl = url.toLowerCase()
+    const lowerName = name?.toLowerCase() || ''
+
+    // Check for explicit PDF extensions
+    if (lowerUrl.endsWith('.pdf') || lowerName.endsWith('.pdf')) {
+      return 'pdf'
+    }
+
+    // Check for Google Drive links (usually documents)
     if (
-      url.toLowerCase().endsWith('.pdf') ||
-      name?.toLowerCase().endsWith('.pdf')
+      lowerUrl.includes('drive.google.com') ||
+      lowerUrl.includes('docs.google.com')
     ) {
       return 'pdf'
     }
+
+    // Check for explicit image extensions logic (default to pdf if not image, or maintain current behavior?)
+    // Current behavior defaults to 'image'. Let's check for known image extensions.
+    const imageExtensions = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.webp',
+      '.svg',
+      '.bmp',
+    ]
+    if (
+      imageExtensions.some(
+        (ext) => lowerUrl.endsWith(ext) || lowerName.endsWith(ext),
+      )
+    ) {
+      return 'image'
+    }
+
+    // If it's a raw Cloudinary upload without extension, it might be tricky.
+    // But safely defaulting to PDF for unknown types might be better than broken image?
+    // However, the legacy behavior was "default to image".
+    // Let's stick to "default to image" IF it doesn't match the new PDF criteria?
+    // No, user complaint "detects as image instead of pdf" suggests "default image" is the problem for URL links.
+
+    // Let's assume if it's NOT a known image extension and NOT a PDF extension/domain,
+    // and it IS a URL provided manually (likely what happened), we should probably treat as link (pdf mode handles links safely).
+
     return 'image'
   }
   function toggleExpand(id: number) {
