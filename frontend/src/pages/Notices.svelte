@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { authClient } from "../lib/auth-client";
-  import { fade } from "svelte/transition";
+  import { authClient } from '../lib/auth-client'
+  import { fade } from 'svelte/transition'
   import {
     getNotices,
     getNoticeStats,
@@ -10,282 +10,282 @@
     uploadNoticeAttachment,
     type Notice,
     type NoticeStats,
-  } from "../lib/api";
-  import { createQuery, useQueryClient } from "@tanstack/svelte-query";
+  } from '../lib/api'
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query'
 
-  const session = authClient.useSession();
-  const queryClient = useQueryClient();
+  const session = authClient.useSession()
+  const queryClient = useQueryClient()
   const sessionUser = $derived(
     $session.data?.user as { role?: string } | undefined,
-  );
+  )
   const isNoticeManager = $derived(
-    sessionUser?.role === "notice_manager" || sessionUser?.role === "admin",
-  );
+    sessionUser?.role === 'notice_manager' || sessionUser?.role === 'admin',
+  )
 
-  type NoticeSection = "results" | "routines";
-  type NoticeSubsection = "be" | "msc";
-  type NoticeAttachmentTypeForm = Exclude<Notice["attachmentType"], null> | "";
+  type NoticeSection = 'results' | 'routines'
+  type NoticeSubsection = 'be' | 'msc'
+  type NoticeAttachmentTypeForm = Exclude<Notice['attachmentType'], null> | ''
 
   // State
-  let activeSection = $state<NoticeSection>("results");
-  let activeSubsection = $state<NoticeSubsection>("be");
-  let searchQuery = $state("");
-  let expandedNoticeId = $state<number | null>(null);
+  let activeSection = $state<NoticeSection>('results')
+  let activeSubsection = $state<NoticeSubsection>('be')
+  let searchQuery = $state('')
+  let expandedNoticeId = $state<number | null>(null)
 
   // Image preview modal
-  let previewImage = $state<string | null>(null);
-  let previewTitle = $state("");
+  let previewImage = $state<string | null>(null)
+  let previewTitle = $state('')
 
   // Management modal state
-  let showManageModal = $state(false);
-  let editingNotice = $state<Notice | null>(null);
-  let isSubmitting = $state(false);
-  let formError = $state<string | null>(null);
-  let isUploadingAttachment = $state(false);
-  let attachmentUploadError = $state<string | null>(null);
-  let attachmentFileInput = $state<HTMLInputElement | null>(null);
-  let isDragActive = $state(false);
+  let showManageModal = $state(false)
+  let editingNotice = $state<Notice | null>(null)
+  let isSubmitting = $state(false)
+  let formError = $state<string | null>(null)
+  let isUploadingAttachment = $state(false)
+  let attachmentUploadError = $state<string | null>(null)
+  let attachmentFileInput = $state<HTMLInputElement | null>(null)
+  let isDragActive = $state(false)
 
   // Form state
-  let formTitle = $state("");
-  let formContent = $state("");
-  let formSection = $state<NoticeSection>("results");
-  let formSubsection = $state<NoticeSubsection>("be");
-  let formAttachmentUrl = $state("");
-  let formAttachmentType = $state<NoticeAttachmentTypeForm>("");
-  let formAttachmentName = $state("");
+  let formTitle = $state('')
+  let formContent = $state('')
+  let formSection = $state<NoticeSection>('results')
+  let formSubsection = $state<NoticeSubsection>('be')
+  let formAttachmentUrl = $state('')
+  let formAttachmentType = $state<NoticeAttachmentTypeForm>('')
+  let formAttachmentName = $state('')
 
   // Delete confirmation
-  let deleteConfirmId = $state<number | null>(null);
+  let deleteConfirmId = $state<number | null>(null)
 
   const noticesQuery = createQuery(() => ({
-    queryKey: ["notices", activeSection, activeSubsection],
+    queryKey: ['notices', activeSection, activeSubsection],
     queryFn: async () => {
       const result = await getNotices({
         section: activeSection,
         subsection: activeSubsection,
-      });
+      })
       if (!result.success || !result.data) {
-        throw new Error(result.message || "Failed to load notices");
+        throw new Error(result.message || 'Failed to load notices')
       }
-      return result.data;
+      return result.data
     },
-  }));
+  }))
 
   const statsQuery = createQuery(() => ({
-    queryKey: ["notice-stats"],
+    queryKey: ['notice-stats'],
     queryFn: async () => {
-      const result = await getNoticeStats();
+      const result = await getNoticeStats()
       if (!result.success || !result.data) {
-        throw new Error(result.message || "Failed to load notice stats");
+        throw new Error(result.message || 'Failed to load notice stats')
       }
-      return result.data;
+      return result.data
     },
-  }));
+  }))
 
   // Handle section change
   function setSection(section: NoticeSection) {
     if (activeSection !== section) {
-      activeSection = section;
+      activeSection = section
     }
   }
 
   // Handle subsection change
   function setSubsection(subsection: NoticeSubsection) {
     if (activeSubsection !== subsection) {
-      activeSubsection = subsection;
+      activeSubsection = subsection
     }
   }
 
   // Filtered notices (client-side search)
   function getFilteredNotices() {
-    let filtered = [...(noticesQuery.data || [])];
+    let filtered = [...(noticesQuery.data || [])]
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+      const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
         (n) =>
           n.title.toLowerCase().includes(query) ||
           n.content.toLowerCase().includes(query),
-      );
+      )
     }
     return filtered.sort(
       (a, b) =>
         new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-    );
+    )
   }
 
-  const filteredNotices = $derived(getFilteredNotices());
+  const filteredNotices = $derived(getFilteredNotices())
   const beResults = $derived(
     statsQuery.data
-      ? activeSection === "results"
+      ? activeSection === 'results'
         ? statsQuery.data.beResults
         : statsQuery.data.beRoutines
       : 0,
-  );
+  )
   const mscResults = $derived(
     statsQuery.data
-      ? activeSection === "results"
+      ? activeSection === 'results'
         ? statsQuery.data.mscResults
         : statsQuery.data.mscRoutines
       : 0,
-  );
-  const newCount = $derived(statsQuery.data ? statsQuery.data.newCount : 0);
+  )
+  const newCount = $derived(statsQuery.data ? statsQuery.data.newCount : 0)
 
   function openImagePreview(url: string, title: string) {
-    previewImage = url;
-    previewTitle = title;
+    previewImage = url
+    previewTitle = title
   }
   function closeImagePreview() {
-    previewImage = null;
-    previewTitle = "";
+    previewImage = null
+    previewTitle = ''
   }
   function formatDate(dateStr: string) {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = diffMs / (1000 * 60 * 60);
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    if (diffHours < 1) return "Just now";
-    if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
-    if (diffDays < 7) return `${Math.floor(diffDays)}d ago`;
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-    });
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffHours = diffMs / (1000 * 60 * 60)
+    const diffDays = diffMs / (1000 * 60 * 60 * 24)
+    if (diffHours < 1) return 'Just now'
+    if (diffHours < 24) return `${Math.floor(diffHours)}h ago`
+    if (diffDays < 7) return `${Math.floor(diffDays)}d ago`
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    })
   }
   function isNoticeNew(publishedAt: string): boolean {
-    const publishDate = new Date(publishedAt);
-    const now = new Date();
-    const diffMs = now.getTime() - publishDate.getTime();
-    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-    return diffMs < twoDaysMs;
+    const publishDate = new Date(publishedAt)
+    const now = new Date()
+    const diffMs = now.getTime() - publishDate.getTime()
+    const twoDaysMs = 2 * 24 * 60 * 60 * 1000
+    return diffMs < twoDaysMs
   }
   function toggleExpand(id: number) {
-    expandedNoticeId = expandedNoticeId === id ? null : id;
+    expandedNoticeId = expandedNoticeId === id ? null : id
   }
   function openCreateModal() {
-    editingNotice = null;
-    formTitle = "";
-    formContent = "";
-    formSection = activeSection;
-    formSubsection = activeSubsection;
-    formAttachmentUrl = "";
-    formAttachmentType = "";
-    formAttachmentName = "";
-    attachmentUploadError = null;
-    if (attachmentFileInput) attachmentFileInput.value = "";
-    formError = null;
-    showManageModal = true;
+    editingNotice = null
+    formTitle = ''
+    formContent = ''
+    formSection = activeSection
+    formSubsection = activeSubsection
+    formAttachmentUrl = ''
+    formAttachmentType = ''
+    formAttachmentName = ''
+    attachmentUploadError = null
+    if (attachmentFileInput) attachmentFileInput.value = ''
+    formError = null
+    showManageModal = true
   }
   function openEditModal(notice: Notice) {
-    editingNotice = notice;
-    formTitle = notice.title;
-    formContent = notice.content;
-    formSection = notice.section;
-    formSubsection = notice.subsection;
-    formAttachmentUrl = notice.attachmentUrl || "";
-    formAttachmentType = notice.attachmentType ?? "";
-    formAttachmentName = notice.attachmentName || "";
-    attachmentUploadError = null;
-    if (attachmentFileInput) attachmentFileInput.value = "";
-    formError = null;
-    showManageModal = true;
+    editingNotice = notice
+    formTitle = notice.title
+    formContent = notice.content
+    formSection = notice.section
+    formSubsection = notice.subsection
+    formAttachmentUrl = notice.attachmentUrl || ''
+    formAttachmentType = notice.attachmentType ?? ''
+    formAttachmentName = notice.attachmentName || ''
+    attachmentUploadError = null
+    if (attachmentFileInput) attachmentFileInput.value = ''
+    formError = null
+    showManageModal = true
   }
   function closeModal() {
-    showManageModal = false;
-    editingNotice = null;
-    formError = null;
+    showManageModal = false
+    editingNotice = null
+    formError = null
   }
   function clearAttachment() {
-    formAttachmentUrl = "";
-    formAttachmentType = "";
-    formAttachmentName = "";
-    attachmentUploadError = null;
-    if (attachmentFileInput) attachmentFileInput.value = "";
+    formAttachmentUrl = ''
+    formAttachmentType = ''
+    formAttachmentName = ''
+    attachmentUploadError = null
+    if (attachmentFileInput) attachmentFileInput.value = ''
   }
   async function handleAttachmentFileSelected(file: File) {
-    if (isUploadingAttachment) return;
-    isUploadingAttachment = true;
-    attachmentUploadError = null;
-    const result = await uploadNoticeAttachment(file);
-    isUploadingAttachment = false;
+    if (isUploadingAttachment) return
+    isUploadingAttachment = true
+    attachmentUploadError = null
+    const result = await uploadNoticeAttachment(file)
+    isUploadingAttachment = false
     if (!result.success || !result.data) {
       attachmentUploadError =
-        result.message || "Failed to upload attachment. Please try again.";
-      return;
+        result.message || 'Failed to upload attachment. Please try again.'
+      return
     }
-    formAttachmentUrl = result.data.url;
-    formAttachmentType = (result.data.type || "") as NoticeAttachmentTypeForm;
-    formAttachmentName = result.data.name || file.name;
+    formAttachmentUrl = result.data.url
+    formAttachmentType = (result.data.type || '') as NoticeAttachmentTypeForm
+    formAttachmentName = result.data.name || file.name
   }
   async function handleAttachmentFileChange(event: Event) {
-    const target = event.currentTarget as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) return;
-    await handleAttachmentFileSelected(file);
-    target.value = "";
+    const target = event.currentTarget as HTMLInputElement
+    const file = target.files?.[0]
+    if (!file) return
+    await handleAttachmentFileSelected(file)
+    target.value = ''
   }
   function handleAttachmentDragOver(event: DragEvent) {
-    event.preventDefault();
-    isDragActive = true;
+    event.preventDefault()
+    isDragActive = true
   }
   function handleAttachmentDragLeave(event: DragEvent) {
-    event.preventDefault();
-    isDragActive = false;
+    event.preventDefault()
+    isDragActive = false
   }
   async function handleAttachmentDrop(event: DragEvent) {
-    event.preventDefault();
-    isDragActive = false;
-    const file = event.dataTransfer?.files?.[0];
-    if (!file) return;
-    await handleAttachmentFileSelected(file);
+    event.preventDefault()
+    isDragActive = false
+    const file = event.dataTransfer?.files?.[0]
+    if (!file) return
+    await handleAttachmentFileSelected(file)
   }
   async function handleSubmit() {
     if (!formTitle.trim() || !formContent.trim()) {
-      formError = "Title and content are required";
-      return;
+      formError = 'Title and content are required'
+      return
     }
     if (isUploadingAttachment) {
-      formError = "Please wait for the attachment upload to finish";
-      return;
+      formError = 'Please wait for the attachment upload to finish'
+      return
     }
-    isSubmitting = true;
-    formError = null;
+    isSubmitting = true
+    formError = null
     const data = {
       title: formTitle.trim(),
       content: formContent.trim(),
       section: formSection,
       subsection: formSubsection,
       attachmentUrl: formAttachmentUrl.trim() || null,
-      attachmentType: formAttachmentType === "" ? null : formAttachmentType,
+      attachmentType: formAttachmentType === '' ? null : formAttachmentType,
       attachmentName: formAttachmentName.trim() || null,
       publishedAt: editingNotice?.publishedAt ?? new Date().toISOString(),
     } satisfies Omit<
       Notice,
-      "id" | "authorId" | "createdAt" | "updatedAt" | "author"
-    >;
-    let result;
+      'id' | 'authorId' | 'createdAt' | 'updatedAt' | 'author'
+    >
+    let result
     if (editingNotice) {
-      result = await updateNotice(editingNotice.id, data);
+      result = await updateNotice(editingNotice.id, data)
     } else {
-      result = await createNotice(data);
+      result = await createNotice(data)
     }
-    isSubmitting = false;
+    isSubmitting = false
     if (result.success) {
-      closeModal();
-      await queryClient.invalidateQueries({ queryKey: ["notices"] });
-      await queryClient.invalidateQueries({ queryKey: ["notice-stats"] });
+      closeModal()
+      await queryClient.invalidateQueries({ queryKey: ['notices'] })
+      await queryClient.invalidateQueries({ queryKey: ['notice-stats'] })
     } else {
-      formError = result.message || "Failed to save notice";
+      formError = result.message || 'Failed to save notice'
     }
   }
   async function handleDelete(id: number) {
-    const result = await deleteNotice(id);
+    const result = await deleteNotice(id)
     if (result.success) {
-      deleteConfirmId = null;
-      await queryClient.invalidateQueries({ queryKey: ["notices"] });
-      await queryClient.invalidateQueries({ queryKey: ["notice-stats"] });
+      deleteConfirmId = null
+      await queryClient.invalidateQueries({ queryKey: ['notices'] })
+      await queryClient.invalidateQueries({ queryKey: ['notice-stats'] })
     }
   }
 </script>
@@ -307,7 +307,7 @@
     <!-- Section Tabs -->
     <div class="flex justify-center gap-3 mb-6">
       <button
-        onclick={() => setSection("results")}
+        onclick={() => setSection('results')}
         class="px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 {activeSection ===
         'results'
           ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
@@ -329,7 +329,7 @@
         Results
       </button>
       <button
-        onclick={() => setSection("routines")}
+        onclick={() => setSection('routines')}
         class="px-6 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 {activeSection ===
         'routines'
           ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
@@ -355,7 +355,7 @@
     <!-- Program Tabs -->
     <div class="flex justify-center gap-3 mb-8">
       <button
-        onclick={() => setSubsection("be")}
+        onclick={() => setSubsection('be')}
         class="px-5 py-2 rounded-full font-medium transition-all flex items-center gap-2 {activeSubsection ===
         'be'
           ? 'bg-slate-800 text-white'
@@ -372,7 +372,7 @@
         >
       </button>
       <button
-        onclick={() => setSubsection("msc")}
+        onclick={() => setSubsection('msc')}
         class="px-5 py-2 rounded-full font-medium transition-all flex items-center gap-2 {activeSubsection ===
         'msc'
           ? 'bg-slate-800 text-white'
@@ -512,7 +512,7 @@
           <p class="text-slate-700 font-semibold">No notices found</p>
           <p class="text-slate-500 text-sm">
             {searchQuery
-              ? "Try a different search term"
+              ? 'Try a different search term'
               : `There are no examination ${activeSection} posted for ${activeSubsection.toUpperCase()} programs yet.`}
           </p>
         </div>
@@ -536,7 +536,7 @@
                   ? 'bg-green-100 text-green-600'
                   : 'bg-blue-100 text-blue-600'}"
               >
-                {#if activeSection === "results"}
+                {#if activeSection === 'results'}
                   <svg
                     class="w-6 h-6"
                     fill="none"
@@ -591,7 +591,7 @@
                       <span
                         class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full uppercase"
                       >
-                        {notice.attachmentType || "file"}
+                        {notice.attachmentType || 'file'}
                       </span>
                     {/if}
                   </div>
@@ -639,7 +639,7 @@
 
                   {#if notice.attachmentUrl}
                     <div class="mt-4 p-4 bg-slate-50 rounded-xl">
-                      {#if notice.attachmentType === "image"}
+                      {#if notice.attachmentType === 'image'}
                         <button
                           onclick={() =>
                             openImagePreview(
@@ -671,7 +671,7 @@
                             />
                           </svg>
                           <span class="font-medium"
-                            >{notice.attachmentName || "Download PDF"}</span
+                            >{notice.attachmentName || 'Download PDF'}</span
                           >
                         </a>
                       {/if}
@@ -768,14 +768,14 @@
     >
       <div class="p-6 border-b border-slate-200">
         <h2 class="text-xl font-bold text-slate-800">
-          {editingNotice ? "Edit Notice" : "Create Notice"}
+          {editingNotice ? 'Edit Notice' : 'Create Notice'}
         </h2>
       </div>
 
       <form
         onsubmit={(e) => {
-          e.preventDefault();
-          handleSubmit();
+          e.preventDefault()
+          handleSubmit()
         }}
         class="p-6 space-y-4"
       >
@@ -843,102 +843,146 @@
         <div>
           <!-- svelte-ignore a11y_label_has_associated_control -->
           <label class="block text-sm font-medium text-slate-700 mb-1"
-            >File (Image/PDF)</label
+            >Attachment (optional)</label
           >
-          <label
-            class="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-4 py-6 text-sm transition-colors {isDragActive
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-slate-200 bg-white hover:border-blue-400'}"
-            ondragover={handleAttachmentDragOver}
-            ondragleave={handleAttachmentDragLeave}
-            ondrop={handleAttachmentDrop}
-          >
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              bind:this={attachmentFileInput}
-              onchange={handleAttachmentFileChange}
-              class="sr-only"
-            />
-            <svg
-              class="w-6 h-6 text-slate-400"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
+          {#if !formAttachmentUrl}
+            <!-- Upload zone when no file is attached -->
+            <label
+              class="flex flex-col items-center justify-center gap-1 w-full h-24 rounded-xl border-2 border-dashed cursor-pointer transition-all {isDragActive
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-slate-200 bg-white hover:border-blue-400'}"
+              ondragover={handleAttachmentDragOver}
+              ondragleave={handleAttachmentDragLeave}
+              ondrop={handleAttachmentDrop}
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M7 16a4 4 0 01.88-7.903A5 5 0 1118 12h-1m-5-6v12m0 0l-3-3m3 3l3-3"
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                bind:this={attachmentFileInput}
+                onchange={handleAttachmentFileChange}
+                class="sr-only"
               />
-            </svg>
-            <span class="text-slate-600">
-              <span class="text-blue-600 font-medium">Click to upload</span>
-              <span class="text-slate-400"> or drag and drop</span>
-            </span>
-            <span class="text-xs text-slate-400">PNG, JPG or PDF</span>
-          </label>
+              <svg
+                class="w-6 h-6 text-slate-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 16a4 4 0 01.88-7.903A5 5 0 1118 12h-1m-5-6v12m0 0l-3-3m3 3l3-3"
+                />
+              </svg>
+              <span class="text-slate-600 text-sm">
+                <span class="text-blue-600 font-medium">Click to upload</span>
+                <span class="text-slate-400"> or drag and drop</span>
+              </span>
+              <span class="text-xs text-slate-400">PNG, JPG or PDF</span>
+            </label>
+          {:else}
+            <!-- Uploaded file preview -->
+            <div
+              class="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl"
+            >
+              {#if formAttachmentType === 'image'}
+                <div
+                  class="shrink-0 w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-6 h-6 text-purple-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+              {:else}
+                <div
+                  class="shrink-0 w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-6 h-6 text-red-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+              {/if}
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-slate-800 truncate">
+                  {formAttachmentName || 'Uploaded file'}
+                </p>
+                <p class="text-sm text-slate-500">
+                  {formAttachmentType === 'image'
+                    ? 'Image file'
+                    : 'PDF Document'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onclick={clearAttachment}
+                class="shrink-0 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                title="Remove attachment"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            </div>
+          {/if}
           {#if isUploadingAttachment}
-            <p class="text-sm text-slate-500 mt-2">Uploading...</p>
+            <div class="flex items-center gap-2 mt-2">
+              <div
+                class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
+              ></div>
+              <p class="text-sm text-slate-500">Uploading...</p>
+            </div>
           {/if}
           {#if attachmentUploadError}
             <p class="text-sm text-red-600 mt-2">{attachmentUploadError}</p>
           {/if}
         </div>
 
-        <div>
-          <!-- svelte-ignore a11y_label_has_associated_control -->
-          <label class="block text-sm font-medium text-slate-700 mb-1"
-            >Attachment URL (optional)</label
-          >
-          <input
-            type="url"
-            bind:value={formAttachmentUrl}
-            class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="https://..."
-          />
-          {#if formAttachmentUrl}
-            <button
-              type="button"
-              onclick={clearAttachment}
-              class="mt-2 text-sm text-slate-500 hover:text-slate-700"
-            >
-              Clear attachment
-            </button>
-          {/if}
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
+        <!-- Display name (optional, only shown when file is attached) -->
+        {#if formAttachmentUrl}
           <div>
             <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-medium text-slate-700 mb-1"
-              >Attachment Type</label
-            >
-            <select
-              bind:value={formAttachmentType}
-              class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">None</option>
-              <option value="pdf">PDF</option>
-              <option value="image">Image</option>
-            </select>
-          </div>
-          <div>
-            <!-- svelte-ignore a11y_label_has_associated_control -->
-            <label class="block text-sm font-medium text-slate-700 mb-1"
-              >Attachment Name</label
+              >Display Name (optional)</label
             >
             <input
               type="text"
               bind:value={formAttachmentName}
               class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Document name"
+              placeholder="Custom name for the attachment"
             />
           </div>
-        </div>
-
-
+        {/if}
 
         <div class="flex justify-end gap-3 pt-4">
           <button
@@ -954,12 +998,12 @@
             class="px-5 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             {isSubmitting
-              ? "Saving..."
+              ? 'Saving...'
               : isUploadingAttachment
-                ? "Uploading..."
+                ? 'Uploading...'
                 : editingNotice
-                  ? "Update"
-                  : "Create"}
+                  ? 'Update'
+                  : 'Create'}
           </button>
         </div>
       </form>
