@@ -657,8 +657,7 @@
                       {:else}
                         <a
                           href={notice.attachmentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          download={notice.attachmentName || 'attachment.pdf'}
                           class="flex items-center gap-3 text-blue-600 hover:text-blue-700"
                         >
                           <svg
