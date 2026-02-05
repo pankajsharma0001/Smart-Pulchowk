@@ -283,8 +283,11 @@ export async function uploadNoticeAttachment(
     const base64 = file.buffer.toString('base64')
     const dataUri = `data:${file.mimetype};base64,${base64}`
 
-    // Generate public ID
-    const publicId = generatePublicId('notice', req.user.id)
+    // Generate public ID - append .pdf extension for PDF files to ensure proper download filename
+    let publicId = generatePublicId('notice', req.user.id)
+    if (file.mimetype === 'application/pdf') {
+      publicId += '.pdf'
+    }
 
     // Determine attachment type and Cloudinary resource type
     const isPdf = file.mimetype === 'application/pdf'
