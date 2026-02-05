@@ -1,7 +1,6 @@
 <script lang="ts">
   import { authClient } from "../lib/auth-client";
   import { fade } from "svelte/transition";
-  import { onMount } from "svelte";
   import {
     getNotices,
     getNoticeStats,
@@ -11,8 +10,10 @@
     type Notice,
     type NoticeStats,
   } from "../lib/api";
+  import { createQuery, useQueryClient } from "@tanstack/svelte-query";
 
   const session = authClient.useSession();
+  const queryClient = useQueryClient();
   const sessionUser = $derived(
     $session.data?.user as { role?: string } | undefined,
   );
@@ -25,11 +26,6 @@
   type NoticeAttachmentTypeForm = Exclude<Notice["attachmentType"], null> | "";
 
   // State
-  let notices = $state<Notice[]>([]);
-  let stats = $state<NoticeStats | null>(null);
-  let isLoading = $state(true);
-  let error = $state<string | null>(null);
-
   let activeSection = $state<NoticeSection>("results");
   let activeSubsection = $state<NoticeSubsection>("be");
   let searchQuery = $state("");
@@ -59,39 +55,35 @@
   // Delete confirmation
   let deleteConfirmId = $state<number | null>(null);
 
-  // Load notices function
-  async function fetchNotices() {
-    isLoading = true;
-    error = null;
-    try {
-      const [noticesRes, statsRes] = await Promise.all([
-        getNotices({ section: activeSection, subsection: activeSubsection }),
-        getNoticeStats(),
-      ]);
-      if (noticesRes.success && noticesRes.data) {
-        notices = noticesRes.data;
-      } else {
-        error = noticesRes.message || "Failed to load notices";
+  const noticesQuery = createQuery(() => ({
+    queryKey: ["notices", activeSection, activeSubsection],
+    queryFn: async () => {
+      const result = await getNotices({
+        section: activeSection,
+        subsection: activeSubsection,
+      });
+      if (!result.success || !result.data) {
+        throw new Error(result.message || "Failed to load notices");
       }
-      if (statsRes.success && statsRes.data) {
-        stats = statsRes.data;
-      }
-    } catch (e: any) {
-      error = e.message || "Failed to load notices";
-    }
-    isLoading = false;
-  }
+      return result.data;
+    },
+  }));
 
-  // Initial load
-  onMount(() => {
-    fetchNotices();
-  });
+  const statsQuery = createQuery(() => ({
+    queryKey: ["notice-stats"],
+    queryFn: async () => {
+      const result = await getNoticeStats();
+      if (!result.success || !result.data) {
+        throw new Error(result.message || "Failed to load notice stats");
+      }
+      return result.data;
+    },
+  }));
 
   // Handle section change
   function setSection(section: NoticeSection) {
     if (activeSection !== section) {
       activeSection = section;
-      fetchNotices();
     }
   }
 
@@ -99,13 +91,12 @@
   function setSubsection(subsection: NoticeSubsection) {
     if (activeSubsection !== subsection) {
       activeSubsection = subsection;
-      fetchNotices();
     }
   }
 
   // Filtered notices (client-side search)
   function getFilteredNotices() {
-    let filtered = [...notices];
+    let filtered = [...(noticesQuery.data || [])];
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -122,20 +113,20 @@
 
   const filteredNotices = $derived(getFilteredNotices());
   const beResults = $derived(
-    stats
+    statsQuery.data
       ? activeSection === "results"
-        ? stats.beResults
-        : stats.beRoutines
+        ? statsQuery.data.beResults
+        : statsQuery.data.beRoutines
       : 0,
   );
   const mscResults = $derived(
-    stats
+    statsQuery.data
       ? activeSection === "results"
-        ? stats.mscResults
-        : stats.mscRoutines
+        ? statsQuery.data.mscResults
+        : statsQuery.data.mscRoutines
       : 0,
   );
-  const newCount = $derived(stats ? stats.newCount : 0);
+  const newCount = $derived(statsQuery.data ? statsQuery.data.newCount : 0);
 
   function openImagePreview(url: string, title: string) {
     previewImage = url;
@@ -226,7 +217,8 @@
     isSubmitting = false;
     if (result.success) {
       closeModal();
-      fetchNotices();
+      await queryClient.invalidateQueries({ queryKey: ["notices"] });
+      await queryClient.invalidateQueries({ queryKey: ["notice-stats"] });
     } else {
       formError = result.message || "Failed to save notice";
     }
@@ -235,7 +227,8 @@
     const result = await deleteNotice(id);
     if (result.success) {
       deleteConfirmId = null;
-      fetchNotices();
+      await queryClient.invalidateQueries({ queryKey: ["notices"] });
+      await queryClient.invalidateQueries({ queryKey: ["notice-stats"] });
     }
   }
 </script>
@@ -400,7 +393,7 @@
     {/if}
 
     <!-- Loading State -->
-    {#if isLoading}
+    {#if noticesQuery.isLoading}
       <div class="flex items-center justify-center py-20">
         <div class="flex flex-col items-center gap-4">
           <div
@@ -409,7 +402,7 @@
           <p class="text-slate-500 font-medium">Loading notices...</p>
         </div>
       </div>
-    {:else if error}
+    {:else if noticesQuery.error}
       <div class="flex items-center justify-center py-20">
         <div class="flex flex-col items-center gap-4 text-center">
           <div
@@ -430,9 +423,9 @@
             </svg>
           </div>
           <p class="text-slate-700 font-semibold">Failed to load notices</p>
-          <p class="text-slate-500 text-sm">{error}</p>
+          <p class="text-slate-500 text-sm">{noticesQuery.error.message}</p>
           <button
-            onclick={() => fetchNotices()}
+            onclick={() => noticesQuery.refetch()}
             class="px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
           >
             Try Again
