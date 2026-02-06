@@ -82,8 +82,8 @@
   );
 </script>
 
-<div class="min-h-[calc(100vh-4rem)] bg-gray-50/30 px-4 py-6 sm:px-6 lg:px-8">
-  <div class="max-w-7xl mx-auto">
+<div class="min-h-[calc(100vh-4rem)] bg-gray-50/30 px-8 py-6 sm:px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto sm:px-4">
     {#if query.isLoading}
       <div class="flex items-center justify-center py-16" in:fade>
         <LoadingSpinner size="lg" text="Loading campus events..." />

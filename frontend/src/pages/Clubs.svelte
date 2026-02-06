@@ -45,7 +45,34 @@
 </script>
 
 <div class="min-h-[calc(100vh-4rem)] bg-gray-50/50 px-4 py-6 sm:px-6 lg:px-8">
-  <div class="max-w-7xl mx-auto">
+  <div class="max-w-7xl mx-auto sm:px-4">
+    <!-- Header -->
+    <div class="text-center mb-10 animate-fade-in">
+      {#if $session.data?.user && ($session.data.user as any).role === "admin"}
+        <a
+          href="/create-club"
+          use:route
+          class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 active:scale-95"
+          in:fly={{ y: 10, duration: 400, delay: 200 }}
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Create New Club
+        </a>
+      {/if}
+    </div>
+
     {#if query.isLoading}
       <div class="flex items-center justify-center py-16" in:fade>
         <LoadingSpinner size="lg" text="Discovering clubs..." />

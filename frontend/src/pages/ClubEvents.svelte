@@ -118,7 +118,8 @@
 
       const now = new Date();
       const sorted: ClubEvent[] = [...eventsQuery.data].sort(
-        (a, b) => getEventTimeMs(b.eventStartTime) - getEventTimeMs(a.eventStartTime),
+        (a, b) =>
+          getEventTimeMs(b.eventStartTime) - getEventTimeMs(a.eventStartTime),
       );
 
       sorted.forEach((e) => {
