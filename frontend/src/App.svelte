@@ -151,14 +151,10 @@
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
-          <a href="/" class="flex items-center gap-2.5 group">
-            <div
-              class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20 transition-transform group-hover:scale-105"
-            >
-              <span class="text-white font-bold text-lg">P</span>
-            </div>
+          <a href="/" class="flex items-center gap-2">
+            <img src="/logo.png" alt="Logo" class="size-8" />
             <span
-              class="text-xl font-bold text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors"
+              class="text-xl mt-0.5 font-bold text-gray-900 tracking-tight group-hover:text-blue-600 transition-colors"
               >Smart Pulchowk</span
             >
           </a>
