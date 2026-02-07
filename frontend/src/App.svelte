@@ -291,13 +291,15 @@
                     ></span>
                     Dashboard
                   </a>
-                  <a
-                    use:route
-                    href="/classroom"
-                    class={`${utilityPillClass('/classroom')} hover:bg-emerald-50 hover:text-emerald-700`}
-                  >
-                    Classroom
-                  </a>
+                  {#if currentRole !== 'admin'}
+                    <a
+                      use:route
+                      href="/classroom"
+                      class={`${utilityPillClass('/classroom')} hover:bg-emerald-50 hover:text-emerald-700`}
+                    >
+                      Classroom
+                    </a>
+                  {/if}
                   {#if currentRole === 'admin'}
                     <a
                       use:route
