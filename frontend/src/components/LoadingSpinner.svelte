@@ -8,10 +8,10 @@
   let { size = "md", color = "blue", text = "" }: Props = $props();
 
   const sizes: Record<"sm" | "md" | "lg" | "xl", string> = {
-    sm: "w-6 h-6 border-2",
-    md: "w-10 h-10 border-3",
-    lg: "w-16 h-16 border-4",
-    xl: "w-24 h-24 border-6",
+    sm: "w-4 h-4 border-2",
+    md: "w-7 h-7 border-2",
+    lg: "w-10 h-10 border-3",
+    xl: "w-14 h-14 border-4",
   };
 
   const colors: Record<"blue" | "white" | "gray", string> = {
@@ -21,9 +21,9 @@
   };
 </script>
 
-<div class="flex flex-col items-center justify-center gap-4 p-8">
+<div class="flex flex-col items-center justify-center gap-2 p-4">
   <div class="{sizes[size]} {colors[color]} rounded-full animate-spin"></div>
   {#if text}
-    <p class="text-gray-600 font-medium animate-pulse">{text}</p>
+    <p class="text-sm text-gray-600 font-medium animate-pulse">{text}</p>
   {/if}
 </div>

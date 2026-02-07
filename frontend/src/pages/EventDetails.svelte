@@ -1705,7 +1705,7 @@
                 >
                   {#if cancelLoading}
                     <div
-                      class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                      class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
                     ></div>
                     Cancelling...
                   {:else}
@@ -1960,7 +1960,7 @@
               >
                 {#if uploadLoading}
                   <div
-                    class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                    class="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"
                   ></div>
                   <span>Uploading...</span>
                 {:else}

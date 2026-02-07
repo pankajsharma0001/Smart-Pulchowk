@@ -335,7 +335,7 @@
               class="absolute inset-0 border-[6px] border-blue-50 rounded-full"
             ></div>
             <div
-              class="absolute inset-0 border-[6px] border-blue-600 rounded-full border-t-transparent animate-spin"
+              class="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"
             ></div>
             <div class="absolute inset-0 flex items-center justify-center">
               <span class="text-2xl font-black text-blue-600"

@@ -556,7 +556,7 @@
                         >
                             {#if sendingMessage}
                                 <div
-                                    class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
+                                    class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
                                 ></div>
                             {:else}
                                 <svg
@@ -747,7 +747,7 @@
                 >
                     {#if deletingConversation}
                         <div
-                            class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"
+                            class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"
                         ></div>
                     {:else}
                         Delete

@@ -451,7 +451,7 @@
         {#if profileQuery.isLoading}
           <div class="flex justify-center py-12">
             <div
-              class="w-6 h-6 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin"
+              class="w-5 h-5 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin"
             ></div>
           </div>
         {:else if !profileQuery.data?.profile}
@@ -568,7 +568,7 @@
           {#if mySubjectsQuery.isLoading}
             <div class="flex justify-center py-12">
               <div
-                class="w-6 h-6 border-2 border-slate-200 border-t-violet-600 rounded-full animate-spin"
+                class="w-5 h-5 border-2 border-slate-200 border-t-violet-600 rounded-full animate-spin"
               ></div>
             </div>
           {:else if studentView === 'subjects'}
@@ -1040,7 +1040,7 @@
           {#if teacherSubjectsQuery.isLoading}
             <div class="py-8 flex justify-center">
               <div
-                class="w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"
+                class="w-5 h-5 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"
               ></div>
             </div>
           {:else if teacherSubjectsQuery.data?.subjects?.length}

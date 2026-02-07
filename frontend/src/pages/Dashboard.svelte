@@ -689,7 +689,7 @@
             {#if subjectsQuery.isLoading}
               <div class="flex justify-center py-8">
                 <div
-                  class="w-5 h-5 border-2 border-slate-200 border-t-violet-600 rounded-full animate-spin"
+                  class="w-4 h-4 border-2 border-slate-200 border-t-violet-600 rounded-full animate-spin"
                 ></div>
               </div>
             {:else if pendingAssignments.length === 0}
@@ -780,7 +780,7 @@
             {#if enrollmentsQuery.isLoading}
               <div class="flex justify-center py-8">
                 <div
-                  class="w-5 h-5 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"
+                  class="w-4 h-4 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"
                 ></div>
               </div>
             {:else if upcomingEvents.length === 0}
@@ -861,7 +861,7 @@
           {:else if myBooksQuery.isLoading}
             <div class="flex justify-center py-8">
               <div
-                class="w-5 h-5 border-2 border-slate-200 border-t-emerald-600 rounded-full animate-spin"
+                class="w-4 h-4 border-2 border-slate-200 border-t-emerald-600 rounded-full animate-spin"
               ></div>
             </div>
           {:else}

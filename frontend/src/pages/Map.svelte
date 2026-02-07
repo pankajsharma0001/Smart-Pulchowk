@@ -1403,7 +1403,7 @@
           <div
             class="text-center text-sm text-amber-600 mb-2 flex items-center justify-center gap-2"
           >
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 class="opacity-25"
                 cx="12"
@@ -1443,7 +1443,7 @@
           >
             {#if chatQuery.isFetching}
               <div
-                class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
               ></div>
             {:else if rateLimitCooldown > 0}
               <span class="text-xs font-bold">{rateLimitCooldown}</span>
@@ -1516,15 +1516,15 @@
   {#if !isNavigating}
     <!-- Search Container -->
     <div
-      class="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4"
+      class="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-md px-4"
     >
       <div class="relative group">
         <!-- Search Icon -->
         <div
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-blue-600 z-10"
+          class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-blue-600 z-10"
         >
           <svg
-            class="w-5 h-5"
+            class="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -1542,7 +1542,7 @@
           bind:value={search}
           type="text"
           placeholder="Search classrooms, departments..."
-          class="w-full pl-12 pr-12 py-4 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/90 backdrop-blur-xl text-gray-800 placeholder-gray-400 transition-all text-base font-medium"
+          class="w-full pl-10 pr-10 py-2.5 rounded-xl shadow-md shadow-gray-200/40 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white/90 backdrop-blur-xl text-gray-800 placeholder-gray-400 transition-all text-sm font-normal"
           onfocus={() => (showSuggestions = true)}
           oninput={() => (showSuggestions = true)}
           onblur={() => setTimeout(() => (showSuggestions = false), 200)}
@@ -1557,10 +1557,10 @@
               showSuggestions = false;
               selectedIndex = -1;
             }}
-            class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
           >
             <svg
-              class="w-5 h-5"
+              class="w-4 h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1578,10 +1578,10 @@
         <!-- Autocomplete Suggestions Dropdown -->
         {#if showSuggestions && filteredSuggestions.length > 0}
           <div
-            class="absolute top-full mt-3 w-full bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden"
+            class="absolute top-full mt-2.5 w-full bg-white/90 backdrop-blur-xl rounded-xl shadow-lg shadow-gray-200/40 border border-gray-100 overflow-hidden"
             transition:fly={{ y: 10, duration: 200 }}
           >
-            <ul class="max-h-[60vh] overflow-y-auto py-2">
+            <ul class="max-h-[50vh] overflow-y-auto py-1.5">
               {#each filteredSuggestions as suggestion, index}
                 {@const iconName = suggestion.properties?.icon}
                 {@const iconUrl = icons.find((i) => i.name === iconName)?.url}
@@ -1592,13 +1592,13 @@
                     onclick={() =>
                       suggestion.properties?.description &&
                       selectSuggestion(suggestion.properties.description)}
-                    class="w-full px-5 py-3.5 text-left hover:bg-blue-50/80 transition-colors flex items-center gap-4 {index ===
+                    class="w-full px-4 py-2.5 text-left hover:bg-blue-50/80 transition-colors flex items-center gap-3 {index ===
                     selectedIndex
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-gray-700'}"
                   >
                     <div
-                      class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 {index ===
+                      class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0 {index ===
                       selectedIndex
                         ? 'bg-blue-200 text-blue-700'
                         : 'text-blue-500'}"
@@ -1607,11 +1607,11 @@
                         <img
                           src={iconUrl}
                           alt=""
-                          class="w-5 h-5 object-contain"
+                          class="w-4 h-4 object-contain"
                         />
                       {:else}
                         <svg
-                          class="w-4 h-4"
+                          class="w-3.5 h-3.5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -1632,16 +1632,16 @@
                       {/if}
                     </div>
                     <div class="flex-1 min-w-0">
-                      <p class="font-medium truncate">
+                      <p class="font-medium text-sm truncate">
                         {suggestion.properties?.description}
                       </p>
-                      <p class="text-xs text-gray-500 truncate mt-0.5">
+                      <p class="text-[11px] text-gray-500 truncate mt-0.5">
                         Pulchowk Campus
                       </p>
                     </div>
                     {#if index === selectedIndex}
                       <svg
-                        class="w-5 h-5 text-blue-600"
+                        class="w-4 h-4 text-blue-600"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -1664,14 +1664,14 @@
         <!-- No Results Message -->
         {#if showSuggestions && search.trim() && filteredSuggestions.length === 0}
           <div
-            class="absolute top-full mt-3 w-full bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-100 p-6 text-center"
+            class="absolute top-full mt-2.5 w-full bg-white/90 backdrop-blur-xl rounded-xl shadow-lg border border-gray-100 p-4 text-center"
             transition:fly={{ y: 10, duration: 200 }}
           >
             <div
-              class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400"
+              class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2.5 text-gray-400"
             >
               <svg
-                class="w-6 h-6"
+                class="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1684,8 +1684,8 @@
                 ></path>
               </svg>
             </div>
-            <p class="text-gray-900 font-medium">No locations found</p>
-            <p class="text-sm text-gray-500 mt-1">
+            <p class="text-gray-900 text-sm font-medium">No locations found</p>
+            <p class="text-xs text-gray-500 mt-1">
               Try searching for a different building or department
             </p>
           </div>
@@ -1696,22 +1696,22 @@
 
   {#if isNavigating}
     <div
-      class="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-md px-4 pointer-events-auto"
+      class="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-sm px-4 pointer-events-auto"
       transition:fade={{ duration: 200 }}
     >
       <div
-        class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 p-4"
+        class="bg-white/90 backdrop-blur-xl rounded-xl shadow-lg shadow-gray-200/40 border border-gray-100 p-3.5"
       >
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2.5">
             <button
               aria-label="Exit navigation"
-              class="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              class="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
               onclick={exitNavigation}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-6 w-6 text-gray-600"
+                class="h-5 w-5 text-gray-600"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -1724,16 +1724,16 @@
                 />
               </svg>
             </button>
-            <h2 class="font-semibold text-lg text-gray-800">Directions</h2>
+            <h2 class="font-semibold text-base text-gray-800">Directions</h2>
           </div>
           <button
             aria-label={isNavMinimized ? "Expand" : "Minimize"}
-            class="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 hover:scale-110 active:scale-95"
+            class="p-1.5 hover:bg-gray-100 rounded-full transition-all duration-200 hover:scale-110 active:scale-95"
             onclick={() => (isNavMinimized = !isNavMinimized)}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 text-gray-600 transition-transform duration-300 ease-out {isNavMinimized
+              class="h-4.5 w-4.5 text-gray-600 transition-transform duration-300 ease-out {isNavMinimized
                 ? 'rotate-180'
                 : 'rotate-0'}"
               fill="none"
@@ -1752,7 +1752,7 @@
 
         {#if !isNavMinimized}
           <div
-            class="flex flex-col gap-3 relative"
+            class="flex flex-col gap-2.5 relative"
             transition:slide={{ duration: 350, easing: quintOut }}
           >
             <div
@@ -1760,11 +1760,11 @@
             >
               <!-- Connector -->
               <div
-                class="absolute top-4.5 bottom-4.5 left-3.75 z-10 flex flex-col items-center justify-between pointer-events-none w-4"
+                class="absolute top-4 bottom-4 left-3.5 z-10 flex flex-col items-center justify-between pointer-events-none w-4"
               >
                 <!-- Start Icon -->
                 <div
-                  class="w-3 h-3 rounded-full border-2 border-gray-400 bg-white shrink-0"
+                  class="w-2.5 h-2.5 rounded-full border-2 border-gray-400 bg-white shrink-0"
                 ></div>
 
                 <!-- Dotted Line -->
@@ -1773,7 +1773,7 @@
                 ></div>
 
                 <!-- End Icon -->
-                <div class="w-3 h-3 rounded-full bg-red-500 shrink-0"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></div>
               </div>
 
               <!-- Start Input Row -->
@@ -1783,7 +1783,7 @@
                   type="text"
                   name="navStart"
                   placeholder="Choose starting point"
-                  class="w-full h-11 pl-10 pr-10 bg-transparent border-none text-sm font-medium text-gray-700 placeholder:text-gray-400 rounded-t-lg"
+                  class="w-full h-10 pl-9 pr-9 bg-transparent border-none text-sm font-medium text-gray-700 placeholder:text-gray-400 rounded-t-lg"
                   onfocus={() => {
                     showNavStartSuggestions = true;
                     showNavEndSuggestions = false;
@@ -1793,7 +1793,7 @@
                 />
                 {#if navStartSearch || showNavStartSuggestions}
                   <button
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
                     onclick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1820,10 +1820,10 @@
                 {/if}
                 {#if showNavStartSuggestions}
                   <div
-                    class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-30 max-h-60 overflow-y-auto"
+                    class="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden z-30 max-h-56 overflow-y-auto"
                   >
                     <button
-                      class="w-full px-4 py-3 text-left hover:bg-blue-50 text-blue-600 font-medium flex items-center gap-2"
+                      class="w-full px-3.5 py-2.5 text-left hover:bg-blue-50 text-blue-600 text-sm font-medium flex items-center gap-2"
                       onclick={useUserLocation}
                     >
                       <svg
@@ -1854,13 +1854,13 @@
                     </button>
                     {#each filteredNavStartSuggestions as suggestion}
                       <button
-                        class="w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 text-sm border-t border-gray-50 flex items-center gap-3"
+                        class="w-full px-3.5 py-2.5 text-left hover:bg-gray-50 text-gray-700 text-sm border-t border-gray-50 flex items-center gap-2.5"
                         onclick={() => selectNavStart(suggestion)}
                       >
                         <img
                           src={getIconUrl(suggestion.properties?.icon)}
                           alt=""
-                          class="w-5 h-5 object-contain"
+                          class="w-4 h-4 object-contain"
                         />
                         <span class="truncate"
                           >{suggestion.properties?.description}</span
@@ -1872,7 +1872,7 @@
               </div>
 
               <!-- Divider -->
-              <div class="mx-10 h-px bg-gray-100"></div>
+              <div class="mx-9 h-px bg-gray-100"></div>
 
               <!-- End Input Row -->
               <div class="relative">
@@ -1881,7 +1881,7 @@
                   type="text"
                   name="navEnd"
                   placeholder="Choose destination"
-                  class="w-full h-11 pl-10 pr-10 bg-transparent border-none text-sm font-semibold text-gray-900 placeholder:text-gray-400 rounded-b-lg"
+                  class="w-full h-10 pl-9 pr-9 bg-transparent border-none text-sm font-semibold text-gray-900 placeholder:text-gray-400 rounded-b-lg"
                   onfocus={() => {
                     showNavEndSuggestions = true;
                     showNavStartSuggestions = false;
@@ -1891,7 +1891,7 @@
                 />
                 {#if navEndSearch || showNavEndSuggestions}
                   <button
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
                     onclick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1918,17 +1918,17 @@
                 {/if}
                 {#if showNavEndSuggestions}
                   <div
-                    class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-30 max-h-60 overflow-y-auto"
+                    class="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden z-30 max-h-56 overflow-y-auto"
                   >
                     {#each filteredNavEndSuggestions as suggestion}
                       <button
-                        class="w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 text-sm border-t border-gray-50 flex items-center gap-3"
+                        class="w-full px-3.5 py-2.5 text-left hover:bg-gray-50 text-gray-700 text-sm border-t border-gray-50 flex items-center gap-2.5"
                         onclick={() => selectNavEnd(suggestion)}
                       >
                         <img
                           src={getIconUrl(suggestion.properties?.icon)}
                           alt=""
-                          class="w-5 h-5 object-contain"
+                          class="w-4 h-4 object-contain"
                         />
                         <span class="truncate"
                           >{suggestion.properties?.description}</span
@@ -1942,14 +1942,14 @@
 
             {#if isCalculatingRoute}
               <div
-                class="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between shadow-sm"
+                class="bg-white rounded-lg border border-gray-200 p-3.5 flex items-center justify-between shadow-sm"
               >
                 <div class="flex flex-col gap-2">
-                  <div class="h-6 w-24 bg-gray-100 rounded animate-pulse"></div>
-                  <div class="h-3 w-32 bg-gray-50 rounded animate-pulse"></div>
+                  <div class="h-5 w-20 bg-gray-100 rounded animate-pulse"></div>
+                  <div class="h-2.5 w-28 bg-gray-50 rounded animate-pulse"></div>
                 </div>
                 <div
-                  class="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"
+                  class="w-9 h-9 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"
                 >
                   <LoadingSpinner size="sm" />
                 </div>
@@ -1958,14 +1958,14 @@
 
             {#if routeDuration}
               <div
-                class="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between shadow-sm"
+                class="bg-white rounded-lg border border-gray-200 p-3.5 flex items-center justify-between shadow-sm"
               >
                 <div>
                   <div class="flex items-baseline gap-2">
-                    <span class="text-2xl font-bold text-gray-900"
+                    <span class="text-xl font-bold text-gray-900"
                       >{routeDuration}</span
                     >
-                    <span class="text-sm text-gray-500 font-medium"
+                    <span class="text-xs text-gray-500 font-medium"
                       >({routeDistance})</span
                     >
                   </div>
@@ -1977,11 +1977,11 @@
                 </div>
                 <button
                   aria-label="Get directions"
-                  class="size-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-600/20 transition-all hover:scale-105 active:scale-95"
+                  class="size-9 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-md shadow-blue-600/20 transition-all hover:scale-105 active:scale-95"
                   onclick={getDirections}
                 >
                   <svg
-                    class="w-5 h-5"
+                    class="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -2309,10 +2309,10 @@
       closeOnClick={true}
     >
       {#key popupData.title}
-        <div class="max-w-xs popup-content">
+        <div class="max-w-[17rem] popup-content">
           {#if popupData.image}
             <div
-              class="overflow-hidden rounded-t-lg mb-2 relative group h-32"
+              class="overflow-hidden rounded-t-lg mb-1.5 relative group h-28"
               ontouchstart={handleTouchStart}
               ontouchend={handleTouchEnd}
             >
@@ -2340,7 +2340,7 @@
                         </div>
                       {:else}
                         <div
-                          class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"
+                          class="w-6 h-6 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin"
                         ></div>
                       {/if}
                     </div>
@@ -2365,7 +2365,7 @@
                 {#if popupData.image.length > 1}
                   <button
                     aria-label="Previous Image"
-                    class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    class="absolute left-1.5 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                     onclick={(e) => {
                       e.stopPropagation();
                       if (Array.isArray(popupData.image)) {
@@ -2381,7 +2381,7 @@
                       viewBox="0 0 24 24"
                       stroke-width="2"
                       stroke="currentColor"
-                      class="w-4 h-4"
+                      class="w-3.5 h-3.5"
                     >
                       <path
                         stroke-linecap="round"
@@ -2393,7 +2393,7 @@
 
                   <button
                     aria-label="Next Image"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    class="absolute right-1.5 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                     onclick={(e) => {
                       e.stopPropagation();
                       if (Array.isArray(popupData.image)) {
@@ -2408,7 +2408,7 @@
                       viewBox="0 0 24 24"
                       stroke-width="2"
                       stroke="currentColor"
-                      class="w-4 h-4"
+                      class="w-3.5 h-3.5"
                     >
                       <path
                         stroke-linecap="round"
@@ -2419,11 +2419,11 @@
                   </button>
 
                   <div
-                    class="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1 z-10"
+                    class="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex space-x-1 z-10"
                   >
                     {#each popupData.image as _, i}
                       <div
-                        class="w-1.5 h-1.5 rounded-full transition-colors {i ===
+                        class="w-1 h-1 rounded-full transition-colors {i ===
                         currentImageIndex
                           ? 'bg-white'
                           : 'bg-white/50'}"
@@ -2452,7 +2452,7 @@
                       </div>
                     {:else}
                       <div
-                        class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"
+                        class="w-6 h-6 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin"
                       ></div>
                     {/if}
                   </div>
@@ -2464,7 +2464,7 @@
                     imagesLoaded[0] = true;
                     fullyLoadedUrls.add(popupData.image as string);
                   }}
-                  class="high-quality-img w-full h-32 object-cover transition-transform duration-700 group-hover:scale-110 {imagesLoaded[0]
+                  class="high-quality-img w-full h-28 object-cover transition-transform duration-700 group-hover:scale-110 {imagesLoaded[0]
                     ? 'opacity-100'
                     : 'opacity-0'}"
                 />
@@ -2474,7 +2474,7 @@
               ></div>
 
               <button
-                class="absolute top-2 right-2 p-1.5 bg-black/40 hover:bg-black/60 rounded-full text-white/90 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-[2px] z-20"
+                class="absolute top-1.5 right-1.5 p-1 bg-black/40 hover:bg-black/60 rounded-full text-white/90 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-[2px] z-20"
                 onclick={(e) => {
                   e.stopPropagation();
                   showFullScreenImage = true;
@@ -2484,7 +2484,7 @@
                 ontouchend={(e) => e.stopPropagation()}
               >
                 <svg
-                  class="w-4 h-4"
+                  class="w-3.5 h-3.5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -2500,14 +2500,14 @@
             </div>
           {/if}
           <div class="px-2 pb-2">
-            <h3 class="font-bold text-lg mb-1 text-gray-800">
+            <h3 class="font-bold text-base mb-0.5 text-gray-800">
               {popupData.title}
             </h3>
-            <p class="text-sm text-gray-600 leading-relaxed">
+            <p class="text-xs text-gray-600 leading-snug">
               {popupData.description}
             </p>
             <button
-              class="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+              class="mt-2.5 w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1.5"
               onclick={() =>
                 startNavigation({
                   properties: {
@@ -2522,7 +2522,7 @@
                 })}
             >
               <svg
-                class="w-4 h-4"
+                class="w-3.5 h-3.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2703,23 +2703,24 @@
 <style>
   :global(.maplibregl-popup-content) {
     padding: 0;
-    border-radius: 0.5rem;
+    border-radius: 0.625rem;
     box-shadow:
-      0 10px 15px -3px rgb(0 0 0 / 0.1),
-      0 4px 6px -2px rgb(0 0 0 / 0.1);
+      0 8px 14px -4px rgb(0 0 0 / 0.14),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
     overflow: hidden;
     backface-visibility: hidden; /* Fixes rounding issues */
     transform: translateZ(0); /* Fixes rounding issues */
   }
 
   :global(.maplibregl-popup-close-button) {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     color: white;
     text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
     z-index: 10;
-    padding: 0 8px;
+    padding: 0 5px;
     right: 0;
     top: 0;
+    line-height: 1;
   }
 
   :global(.maplibregl-popup-close-button:hover) {

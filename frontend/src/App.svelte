@@ -278,7 +278,7 @@
                     class="inline-flex h-10 items-center px-3 rounded-xl bg-white border border-slate-200"
                   >
                     <div
-                      class="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin"
+                      class="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin"
                     ></div>
                   </div>
                 {:else if navUser}

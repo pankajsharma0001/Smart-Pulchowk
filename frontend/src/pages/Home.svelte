@@ -1,14 +1,12 @@
 <script lang="ts">
-  import { route } from '@mateothegreat/svelte5-router'
-  import { authClient } from '../lib/auth-client'
-  import { fade, fly } from 'svelte/transition'
+  import { route } from "@mateothegreat/svelte5-router";
+  import { authClient } from "../lib/auth-client";
+  import { fade, fly } from "svelte/transition";
 
-  const session = authClient.useSession()
+  const session = authClient.useSession();
 </script>
 
-<div
-  class="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center"
->
+<div class="flex flex-col items-center min-h-[80vh] py-16 text-center">
   <!-- Hero Section -->
   <div class="max-w-3xl mx-auto space-y-8" in:fly={{ y: 20, duration: 600 }}>
     <!-- Badge -->
@@ -79,7 +77,7 @@
       {/if}
 
       <div
-        class="w-full sm:w-auto h-px bg-slate-200 sm:h-8 sm:w-px mx-2 hidden sm:block"
+        class="w-full sm:w-auto h-px bg-slate-200 sm:h-8 mx-2 hidden sm:block"
       ></div>
 
       <!-- Feature Pills -->

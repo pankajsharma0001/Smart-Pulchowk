@@ -948,7 +948,7 @@
                 >
                   {#if isSubmitting}
                     <div
-                      class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                      class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"
                     ></div>
                     <span>Saving...</span>
                   {:else}

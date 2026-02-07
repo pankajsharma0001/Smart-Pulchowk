@@ -582,7 +582,7 @@
       <div class="flex items-center justify-center py-20">
         <div class="flex flex-col items-center gap-4">
           <div
-            class="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"
+            class="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
           ></div>
           <p class="text-slate-500 font-medium">Loading notices...</p>
         </div>
@@ -802,7 +802,7 @@
                                 </div>
                               {:else}
                                 <div
-                                  class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"
+                                  class="w-6 h-6 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin"
                                 ></div>
                               {/if}
                             </div>
@@ -1184,7 +1184,7 @@
           {#if isUploadingAttachment}
             <div class="flex items-center gap-2 mt-2">
               <div
-                class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
+                class="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"
               ></div>
               <p class="text-sm text-slate-500">Uploading...</p>
             </div>
