@@ -13,6 +13,10 @@
     blockMarketplaceUser,
     unblockMarketplaceUser,
     getBlockedMarketplaceUsers,
+    createPurchaseRequest,
+    getPurchaseRequestStatus,
+    cancelPurchaseRequest,
+    getSellerContactInfo,
     type BookListing,
     type MarketplaceReport,
   } from "../lib/api";
@@ -44,6 +48,12 @@
   let unblockSubmitting = $state(false);
   let trustFeedback = $state<string | null>(null);
   let trustError = $state<string | null>(null);
+
+  // Purchase Request State
+  let requestToBuyModalOpen = $state(false);
+  let requestMessage = $state("");
+  let requestSubmitting = $state(false);
+  let cancellingRequest = $state(false);
 
   onMount(() => {
     window.scrollTo(0, 0);
@@ -94,6 +104,32 @@
       throw new Error(result.message || "Could not load blocked users");
     },
     enabled: !!$session.data?.user,
+  }));
+
+  const purchaseRequestQuery = createQuery(() => ({
+    queryKey: ["purchase-request", bookId],
+    queryFn: async () => {
+      if (!bookId || !$session.data?.user) return null;
+      const result = await getPurchaseRequestStatus(bookId);
+      if (result.success) return result.data;
+      return null;
+    },
+    enabled: bookId > 0 && !!$session.data?.user,
+  }));
+
+  const sellerContactQuery = createQuery(() => ({
+    queryKey: ["seller-contact", bookId],
+    queryFn: async () => {
+      if (!bookId || !$session.data?.user) return null;
+      const result = await getSellerContactInfo(bookId);
+      if (result.success) return result.data;
+      return null;
+    },
+    enabled:
+      bookId > 0 &&
+      !!$session.data?.user &&
+      (purchaseRequestQuery.data?.status === "accepted" ||
+        bookQuery.data?.isOwner),
   }));
 
   $effect(() => {
@@ -295,6 +331,82 @@
       trustError = "Could not block seller.";
     } finally {
       blockSubmitting = false;
+    }
+  }
+
+  async function handleRequestToBuy() {
+    if (!bookId || requestSubmitting) return;
+    requestSubmitting = true;
+    try {
+      const result = await createPurchaseRequest(
+        bookId,
+        requestMessage.trim() || undefined,
+      );
+      if (result.success) {
+        requestToBuyModalOpen = false;
+        requestMessage = "";
+        await purchaseRequestQuery.refetch();
+      } else {
+        trustError = result.message || "Failed to send request.";
+      }
+    } catch (error) {
+      console.error("Failed to send purchase request:", error);
+      trustError = "An error occurred while sending the request.";
+    } finally {
+      requestSubmitting = false;
+    }
+  }
+
+  async function handleCancelRequest() {
+    const request = purchaseRequestQuery.data;
+    if (!request || cancellingRequest) return;
+    if (!confirm("Cancel your request to buy this book?")) return;
+
+    cancellingRequest = true;
+    try {
+      const result = await cancelPurchaseRequest(request.id);
+      if (result.success) {
+        await purchaseRequestQuery.refetch();
+      } else {
+        trustError = result.message || "Failed to cancel request.";
+      }
+    } catch (error) {
+      console.error("Failed to cancel purchase request:", error);
+      trustError = "An error occurred while cancelling the request.";
+    } finally {
+      cancellingRequest = false;
+    }
+  }
+
+  function getStatusLabel(status: string) {
+    switch (status) {
+      case "requested":
+        return "Pending";
+      case "accepted":
+        return "Accepted";
+      case "rejected":
+        return "Rejected";
+      case "completed":
+        return "Completed";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status;
+    }
+  }
+
+  function getStatusColorClass(status: string) {
+    switch (status) {
+      case "requested":
+        return "bg-amber-100 text-amber-700 border-amber-200";
+      case "accepted":
+        return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "rejected":
+        return "bg-rose-100 text-rose-700 border-rose-200";
+      case "completed":
+        return "bg-blue-100 text-blue-700 border-blue-200";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200";
     }
   }
 
@@ -791,12 +903,50 @@
                 >
                   {saving ? "Updating..." : savedState ? "Saved" : "Save"}
                 </button>
-                <a
-                  href="/messages?listing={book.id}"
-                  class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
-                >
-                  Message Seller
-                </a>
+
+                {#if purchaseRequestQuery.data}
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="px-3 py-2 rounded-xl border text-sm font-bold {getStatusColorClass(
+                        purchaseRequestQuery.data.status,
+                      )}"
+                    >
+                      Request {getStatusLabel(purchaseRequestQuery.data.status)}
+                    </span>
+
+                    {#if purchaseRequestQuery.data.status === "requested"}
+                      <button
+                        onclick={handleCancelRequest}
+                        disabled={cancellingRequest}
+                        class="px-4 py-2 rounded-xl border border-rose-200 text-rose-700 text-sm font-semibold hover:bg-rose-50 transition-colors disabled:opacity-50"
+                      >
+                        {cancellingRequest ? "Cancelling..." : "Cancel"}
+                      </button>
+                    {:else if purchaseRequestQuery.data.status === "accepted"}
+                      <a
+                        href="/messages?listing={book.id}"
+                        class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        Chat with Seller
+                      </a>
+                      {#if sellerContactQuery.data?.email}
+                        <a
+                          href="mailto:{sellerContactQuery.data.email}"
+                          class="px-4 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors"
+                        >
+                          Email Seller
+                        </a>
+                      {/if}
+                    {/if}
+                  </div>
+                {:else}
+                  <button
+                    onclick={() => (requestToBuyModalOpen = true)}
+                    class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                  >
+                    Request to Buy
+                  </button>
+                {/if}
               {:else if !$session.data?.user && book.status === "available"}
                 <a
                   href="/register"
@@ -819,3 +969,87 @@
     {/if}
   </div>
 </div>
+
+{#if requestToBuyModalOpen}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+    transition:fade={{ duration: 200 }}
+  >
+    <!-- Backdrop -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+      onclick={() => (requestToBuyModalOpen = false)}
+    ></div>
+
+    <!-- Modal Content -->
+    <div
+      class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-cyan-100/50"
+      transition:fly={{ y: 20, duration: 400 }}
+    >
+      <div class="p-6 sm:p-8">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-black text-slate-900 tracking-tight">
+            Request to Buy
+          </h3>
+          <button
+            onclick={() => (requestToBuyModalOpen = false)}
+            class="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            <svg
+              class="w-5 h-5 text-slate-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l18 18"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label
+              for="requestMessage"
+              class="block text-sm font-bold text-slate-700 mb-1.5"
+            >
+              Message to Seller
+            </label>
+            <textarea
+              id="requestMessage"
+              bind:value={requestMessage}
+              placeholder="e.g., I'm interested in this book. When can we meet?"
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all resize-none h-32 text-sm"
+            ></textarea>
+            <p class="mt-2 text-xs text-slate-500">
+              The seller will be notified of your interest. You can chat
+              directly once they accept your request.
+            </p>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onclick={handleRequestToBuy}
+              disabled={requestSubmitting}
+              class="flex-1 px-6 py-3 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-200 active:scale-95"
+            >
+              {requestSubmitting ? "Sending..." : "Send Request"}
+            </button>
+            <button
+              onclick={() => (requestToBuyModalOpen = false)}
+              class="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
