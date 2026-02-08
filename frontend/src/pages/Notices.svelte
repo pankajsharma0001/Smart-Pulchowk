@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { authClient } from '../lib/auth-client'
-  import { fade } from 'svelte/transition'
+  import { authClient } from "../lib/auth-client";
+  import { fade } from "svelte/transition";
   import {
     getNotices,
     getNoticeStats,
@@ -10,281 +10,283 @@
     uploadNoticeAttachment,
     type Notice,
     type NoticeStats,
-  } from '../lib/api'
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query'
+  } from "../lib/api";
+  import { createQuery, useQueryClient } from "@tanstack/svelte-query";
 
-  const session = authClient.useSession()
-  const queryClient = useQueryClient()
+  const session = authClient.useSession();
+  const queryClient = useQueryClient();
   const sessionUser = $derived(
     $session.data?.user as { role?: string } | undefined,
-  )
+  );
   const isNoticeManager = $derived(
-    sessionUser?.role === 'notice_manager' || sessionUser?.role === 'admin',
-  )
+    sessionUser?.role === "notice_manager" || sessionUser?.role === "admin",
+  );
 
-  type NoticeSection = 'results' | 'routines'
-  type NoticeSubsection = 'be' | 'msc'
+  type NoticeSection = "results" | "routines";
+  type NoticeSubsection = "be" | "msc";
 
   // State
-  let activeSection = $state<NoticeSection>('results')
-  let activeSubsection = $state<NoticeSubsection>('be')
-  let searchQuery = $state('')
-  let expandedNoticeId = $state<number | null>(null)
+  let activeSection = $state<NoticeSection>("results");
+  let activeSubsection = $state<NoticeSubsection>("be");
+  let searchQuery = $state("");
+  let expandedNoticeId = $state<number | null>(null);
 
   // Image preview modal
-  let previewImage = $state<string | null>(null)
-  let previewTitle = $state('')
+  let previewImage = $state<string | null>(null);
+  let previewTitle = $state("");
 
   // Management modal state
-  let showManageModal = $state(false)
-  let editingNotice = $state<Notice | null>(null)
-  let isSubmitting = $state(false)
-  let formError = $state<string | null>(null)
-  let isUploadingAttachment = $state(false)
-  let attachmentUploadError = $state<string | null>(null)
-  let attachmentFileInput = $state<HTMLInputElement | null>(null)
-  let isDragActive = $state(false)
+  let showManageModal = $state(false);
+  let editingNotice = $state<Notice | null>(null);
+  let isSubmitting = $state(false);
+  let formError = $state<string | null>(null);
+  let isUploadingAttachment = $state(false);
+  let attachmentUploadError = $state<string | null>(null);
+  let attachmentFileInput = $state<HTMLInputElement | null>(null);
+  let isDragActive = $state(false);
 
   // Form state
-  let formTitle = $state('')
-  let formContent = $state('')
-  let formSection = $state<NoticeSection>('results')
-  let formSubsection = $state<NoticeSubsection>('be')
-  let formAttachmentUrl = $state('')
-  let manualUrlInput = $state('')
-  let formAttachmentName = $state('')
-  let activeAttachmentTab = $state<'upload' | 'url'>('upload')
+  let formTitle = $state("");
+  let formContent = $state("");
+  let formSection = $state<NoticeSection>("results");
+  let formSubsection = $state<NoticeSubsection>("be");
+  let formAttachmentUrl = $state("");
+  let manualUrlInput = $state("");
+  let formAttachmentName = $state("");
+  let activeAttachmentTab = $state<"upload" | "url">("upload");
 
   // Delete confirmation
-  let deleteConfirmId = $state<number | null>(null)
+  let deleteConfirmId = $state<number | null>(null);
 
   // Image loading progress state
-  let imagesLoaded = $state<Record<number, boolean>>({})
-  let imageProgress = $state<Record<number, number | undefined>>({})
-  let progressFailedUrls = new Set<string>()
-  const fullyLoadedUrls = new Set<string>()
+  let imagesLoaded = $state<Record<number, boolean>>({});
+  let imageProgress = $state<Record<number, number | undefined>>({});
+  let progressFailedUrls = new Set<string>();
+  const fullyLoadedUrls = new Set<string>();
 
   async function loadImageWithProgress(url: string, noticeId: number) {
     // Skip if we know this URL fails to provide progress
     if (!url || progressFailedUrls.has(url)) {
-      imageProgress[noticeId] = undefined
-      return
+      imageProgress[noticeId] = undefined;
+      return;
     }
 
     // Check if we've already fully loaded this image previously in the session
     if (fullyLoadedUrls.has(url)) {
       if (!imagesLoaded[noticeId]) {
-        imagesLoaded[noticeId] = true
-        imageProgress[noticeId] = 100
+        imagesLoaded[noticeId] = true;
+        imageProgress[noticeId] = 100;
       }
-      return
+      return;
     }
 
     // If the image is already loaded (from cache/onload firing first), don't reset
     if (imagesLoaded[noticeId]) {
-      imageProgress[noticeId] = 100
-      fullyLoadedUrls.add(url)
-      return
+      imageProgress[noticeId] = 100;
+      fullyLoadedUrls.add(url);
+      return;
     }
 
-    imageProgress[noticeId] = 0
-    imagesLoaded[noticeId] = false
+    imageProgress[noticeId] = 0;
+    imagesLoaded[noticeId] = false;
 
     // Use XMLHttpRequest for progress tracking (better CORS support than fetch)
-    const xhr = new XMLHttpRequest()
-    xhr.open('GET', url, true)
-    xhr.responseType = 'blob'
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "blob";
 
     xhr.onprogress = (event) => {
       if (event.lengthComputable) {
-        imageProgress[noticeId] = Math.round((event.loaded / event.total) * 100)
+        imageProgress[noticeId] = Math.round(
+          (event.loaded / event.total) * 100,
+        );
       }
-    }
+    };
 
     xhr.onload = () => {
       if (xhr.status === 200) {
-        imageProgress[noticeId] = 100
-        imagesLoaded[noticeId] = true
-        fullyLoadedUrls.add(url)
+        imageProgress[noticeId] = 100;
+        imagesLoaded[noticeId] = true;
+        fullyLoadedUrls.add(url);
       } else {
-        progressFailedUrls.add(url)
-        imageProgress[noticeId] = undefined
+        progressFailedUrls.add(url);
+        imageProgress[noticeId] = undefined;
       }
-    }
+    };
 
     xhr.onerror = () => {
-      console.log('XHR progress failed, falling back', url)
-      progressFailedUrls.add(url)
-      imageProgress[noticeId] = undefined
-    }
+      console.log("XHR progress failed, falling back", url);
+      progressFailedUrls.add(url);
+      imageProgress[noticeId] = undefined;
+    };
 
-    xhr.send()
+    xhr.send();
   }
 
   const noticesQuery = createQuery(() => ({
-    queryKey: ['notices', activeSection, activeSubsection],
+    queryKey: ["notices", activeSection, activeSubsection],
     queryFn: async () => {
       const result = await getNotices({
         section: activeSection,
         subsection: activeSubsection,
-      })
+      });
       if (!result.success || !result.data) {
-        throw new Error(result.message || 'Failed to load notices')
+        throw new Error(result.message || "Failed to load notices");
       }
-      return result.data
+      return result.data;
     },
-  }))
+  }));
 
   const statsQuery = createQuery(() => ({
-    queryKey: ['notice-stats'],
+    queryKey: ["notice-stats"],
     queryFn: async () => {
-      const result = await getNoticeStats()
+      const result = await getNoticeStats();
       if (!result.success || !result.data) {
-        throw new Error(result.message || 'Failed to load notice stats')
+        throw new Error(result.message || "Failed to load notice stats");
       }
-      return result.data
+      return result.data;
     },
-  }))
+  }));
 
   // Handle section change
   function setSection(section: NoticeSection) {
     if (activeSection !== section) {
-      activeSection = section
+      activeSection = section;
     }
   }
 
   // Handle subsection change
   function setSubsection(subsection: NoticeSubsection) {
     if (activeSubsection !== subsection) {
-      activeSubsection = subsection
+      activeSubsection = subsection;
     }
   }
 
   // Filtered notices (client-side search)
   function getFilteredNotices() {
-    let filtered = [...(noticesQuery.data || [])]
+    let filtered = [...(noticesQuery.data || [])];
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (n) =>
           n.title.toLowerCase().includes(query) ||
           n.content.toLowerCase().includes(query),
-      )
+      );
     }
     return filtered.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
+    );
   }
 
-  const filteredNotices = $derived(getFilteredNotices())
+  const filteredNotices = $derived(getFilteredNotices());
   const beResults = $derived(
     statsQuery.data
-      ? activeSection === 'results'
+      ? activeSection === "results"
         ? statsQuery.data.beResults
         : statsQuery.data.beRoutines
       : 0,
-  )
+  );
   const mscResults = $derived(
     statsQuery.data
-      ? activeSection === 'results'
+      ? activeSection === "results"
         ? statsQuery.data.mscResults
         : statsQuery.data.mscRoutines
       : 0,
-  )
+  );
   // Calculate newCount locally from notices using the same isNoticeNew logic
   const newCount = $derived(
     filteredNotices.filter((n) => isNoticeNew(n.createdAt)).length,
-  )
+  );
 
   function openImagePreview(url: string, title: string) {
-    previewImage = url
-    previewTitle = title
+    previewImage = url;
+    previewTitle = title;
   }
 
   // Load image with progress when a notice is expanded
   $effect(() => {
     if (expandedNoticeId !== null) {
-      const notice = filteredNotices.find((n) => n.id === expandedNoticeId)
+      const notice = filteredNotices.find((n) => n.id === expandedNoticeId);
       if (
         notice?.attachmentUrl &&
         getAttachmentType(notice.attachmentUrl, notice.attachmentName) ===
-          'image'
+          "image"
       ) {
         if (
           !imagesLoaded[notice.id] &&
           imageProgress[notice.id] === undefined
         ) {
-          loadImageWithProgress(notice.attachmentUrl, notice.id)
+          loadImageWithProgress(notice.attachmentUrl, notice.id);
         }
       }
     }
-  })
+  });
 
   function closeImagePreview() {
-    previewImage = null
-    previewTitle = ''
+    previewImage = null;
+    previewTitle = "";
   }
   function formatDate(dateStr: string) {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffHours = diffMs / (1000 * 60 * 60)
-    const diffDays = diffMs / (1000 * 60 * 60 * 24)
-    if (diffHours < 1) return 'Just now'
-    if (diffHours < 24) return `${Math.floor(diffHours)}h ago`
-    if (diffDays < 7) return `${Math.floor(diffDays)}d ago`
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    })
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
+    if (diffDays < 7) return `${Math.floor(diffDays)}d ago`;
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    });
   }
   function isNoticeNew(createdAt: string): boolean {
-    const publishDate = new Date(createdAt)
-    const now = new Date()
-    const diffMs = now.getTime() - publishDate.getTime()
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
-    return diffMs < sevenDaysMs
+    const publishDate = new Date(createdAt);
+    const now = new Date();
+    const diffMs = now.getTime() - publishDate.getTime();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return diffMs < sevenDaysMs;
   }
   function getAttachmentType(
     url: string | null,
     name: string | null,
-  ): 'image' | 'pdf' {
-    if (!url) return 'image'
-    const lowerUrl = url.toLowerCase()
-    const lowerName = name?.toLowerCase() || ''
+  ): "image" | "pdf" {
+    if (!url) return "image";
+    const lowerUrl = url.toLowerCase();
+    const lowerName = name?.toLowerCase() || "";
 
     // Check for explicit PDF extensions
-    if (lowerUrl.endsWith('.pdf') || lowerName.endsWith('.pdf')) {
-      return 'pdf'
+    if (lowerUrl.endsWith(".pdf") || lowerName.endsWith(".pdf")) {
+      return "pdf";
     }
 
     // Check for Google Drive links (usually documents)
     if (
-      lowerUrl.includes('drive.google.com') ||
-      lowerUrl.includes('docs.google.com')
+      lowerUrl.includes("drive.google.com") ||
+      lowerUrl.includes("docs.google.com")
     ) {
-      return 'pdf'
+      return "pdf";
     }
 
     // Check for explicit image extensions logic (default to pdf if not image, or maintain current behavior?)
     // Current behavior defaults to 'image'. Let's check for known image extensions.
     const imageExtensions = [
-      '.jpg',
-      '.jpeg',
-      '.png',
-      '.gif',
-      '.webp',
-      '.svg',
-      '.bmp',
-    ]
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".webp",
+      ".svg",
+      ".bmp",
+    ];
     if (
       imageExtensions.some(
         (ext) => lowerUrl.endsWith(ext) || lowerName.endsWith(ext),
       )
     ) {
-      return 'image'
+      return "image";
     }
 
     // If it's a raw Cloudinary upload without extension, it might be tricky.
@@ -296,102 +298,102 @@
     // Let's assume if it's NOT a known image extension and NOT a PDF extension/domain,
     // and it IS a URL provided manually (likely what happened), we should probably treat as link (pdf mode handles links safely).
 
-    return 'image'
+    return "image";
   }
   function toggleExpand(id: number) {
-    expandedNoticeId = expandedNoticeId === id ? null : id
+    expandedNoticeId = expandedNoticeId === id ? null : id;
   }
   function openCreateModal() {
-    editingNotice = null
-    formTitle = ''
-    formContent = ''
-    formSection = activeSection
-    formSubsection = activeSubsection
-    formAttachmentUrl = ''
+    editingNotice = null;
+    formTitle = "";
+    formContent = "";
+    formSection = activeSection;
+    formSubsection = activeSubsection;
+    formAttachmentUrl = "";
 
-    formAttachmentName = ''
-    attachmentUploadError = null
-    if (attachmentFileInput) attachmentFileInput.value = ''
-    formError = null
-    showManageModal = true
+    formAttachmentName = "";
+    attachmentUploadError = null;
+    if (attachmentFileInput) attachmentFileInput.value = "";
+    formError = null;
+    showManageModal = true;
   }
   function openEditModal(notice: Notice) {
-    editingNotice = notice
-    formTitle = notice.title
-    formContent = notice.content
-    formSection = notice.section
-    formSubsection = notice.subsection
-    formAttachmentUrl = notice.attachmentUrl || ''
-    manualUrlInput = ''
-    activeAttachmentTab = 'upload'
+    editingNotice = notice;
+    formTitle = notice.title;
+    formContent = notice.content;
+    formSection = notice.section;
+    formSubsection = notice.subsection;
+    formAttachmentUrl = notice.attachmentUrl || "";
+    manualUrlInput = "";
+    activeAttachmentTab = "upload";
 
-    formAttachmentName = notice.attachmentName || ''
-    attachmentUploadError = null
-    if (attachmentFileInput) attachmentFileInput.value = ''
-    formError = null
-    showManageModal = true
+    formAttachmentName = notice.attachmentName || "";
+    attachmentUploadError = null;
+    if (attachmentFileInput) attachmentFileInput.value = "";
+    formError = null;
+    showManageModal = true;
   }
   function closeModal() {
-    showManageModal = false
-    editingNotice = null
-    formError = null
+    showManageModal = false;
+    editingNotice = null;
+    formError = null;
   }
   function clearAttachment() {
-    formAttachmentUrl = ''
-    manualUrlInput = ''
+    formAttachmentUrl = "";
+    manualUrlInput = "";
 
-    formAttachmentName = ''
-    attachmentUploadError = null
-    if (attachmentFileInput) attachmentFileInput.value = ''
+    formAttachmentName = "";
+    attachmentUploadError = null;
+    if (attachmentFileInput) attachmentFileInput.value = "";
   }
   async function handleAttachmentFileSelected(file: File) {
-    if (isUploadingAttachment) return
-    isUploadingAttachment = true
-    attachmentUploadError = null
-    const result = await uploadNoticeAttachment(file)
-    isUploadingAttachment = false
+    if (isUploadingAttachment) return;
+    isUploadingAttachment = true;
+    attachmentUploadError = null;
+    const result = await uploadNoticeAttachment(file);
+    isUploadingAttachment = false;
     if (!result.success || !result.data) {
       attachmentUploadError =
-        result.message || 'Failed to upload attachment. Please try again.'
-      return
+        result.message || "Failed to upload attachment. Please try again.";
+      return;
     }
-    formAttachmentUrl = result.data.url
+    formAttachmentUrl = result.data.url;
 
-    formAttachmentName = result.data.name || file.name
+    formAttachmentName = result.data.name || file.name;
   }
   async function handleAttachmentFileChange(event: Event) {
-    const target = event.currentTarget as HTMLInputElement
-    const file = target.files?.[0]
-    if (!file) return
-    await handleAttachmentFileSelected(file)
-    target.value = ''
+    const target = event.currentTarget as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+    await handleAttachmentFileSelected(file);
+    target.value = "";
   }
   function handleAttachmentDragOver(event: DragEvent) {
-    event.preventDefault()
-    isDragActive = true
+    event.preventDefault();
+    isDragActive = true;
   }
   function handleAttachmentDragLeave(event: DragEvent) {
-    event.preventDefault()
-    isDragActive = false
+    event.preventDefault();
+    isDragActive = false;
   }
   async function handleAttachmentDrop(event: DragEvent) {
-    event.preventDefault()
-    isDragActive = false
-    const file = event.dataTransfer?.files?.[0]
-    if (!file) return
-    await handleAttachmentFileSelected(file)
+    event.preventDefault();
+    isDragActive = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    await handleAttachmentFileSelected(file);
   }
   async function handleSubmit() {
     if (!formTitle.trim() || !formContent.trim()) {
-      formError = 'Title and content are required'
-      return
+      formError = "Title and content are required";
+      return;
     }
     if (isUploadingAttachment) {
-      formError = 'Please wait for the attachment upload to finish'
-      return
+      formError = "Please wait for the attachment upload to finish";
+      return;
     }
-    isSubmitting = true
-    formError = null
+    isSubmitting = true;
+    formError = null;
     const data = {
       title: formTitle.trim(),
       content: formContent.trim(),
@@ -402,29 +404,29 @@
       attachmentName: formAttachmentName.trim() || null,
     } satisfies Omit<
       Notice,
-      'id' | 'authorId' | 'createdAt' | 'updatedAt' | 'author'
-    >
-    let result
+      "id" | "authorId" | "createdAt" | "updatedAt" | "author"
+    >;
+    let result;
     if (editingNotice) {
-      result = await updateNotice(editingNotice.id, data)
+      result = await updateNotice(editingNotice.id, data);
     } else {
-      result = await createNotice(data)
+      result = await createNotice(data);
     }
-    isSubmitting = false
+    isSubmitting = false;
     if (result.success) {
-      closeModal()
-      await queryClient.invalidateQueries({ queryKey: ['notices'] })
-      await queryClient.invalidateQueries({ queryKey: ['notice-stats'] })
+      closeModal();
+      await queryClient.invalidateQueries({ queryKey: ["notices"] });
+      await queryClient.invalidateQueries({ queryKey: ["notice-stats"] });
     } else {
-      formError = result.message || 'Failed to save notice'
+      formError = result.message || "Failed to save notice";
     }
   }
   async function handleDelete(id: number) {
-    const result = await deleteNotice(id)
+    const result = await deleteNotice(id);
     if (result.success) {
-      deleteConfirmId = null
-      await queryClient.invalidateQueries({ queryKey: ['notices'] })
-      await queryClient.invalidateQueries({ queryKey: ['notice-stats'] })
+      deleteConfirmId = null;
+      await queryClient.invalidateQueries({ queryKey: ["notices"] });
+      await queryClient.invalidateQueries({ queryKey: ["notice-stats"] });
     }
   }
 </script>
@@ -434,7 +436,7 @@
     <!-- Section Tabs -->
     <div class="flex justify-center gap-2 mb-4">
       <button
-        onclick={() => setSection('results')}
+        onclick={() => setSection("results")}
         class="px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1.5 {activeSection ===
         'results'
           ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
@@ -456,7 +458,7 @@
         Results
       </button>
       <button
-        onclick={() => setSection('routines')}
+        onclick={() => setSection("routines")}
         class="px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1.5 {activeSection ===
         'routines'
           ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
@@ -482,7 +484,7 @@
     <!-- Program Tabs -->
     <div class="flex justify-center gap-2 mb-5">
       <button
-        onclick={() => setSubsection('be')}
+        onclick={() => setSubsection("be")}
         class="px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 {activeSubsection ===
         'be'
           ? 'bg-slate-800 text-white'
@@ -499,7 +501,7 @@
         >
       </button>
       <button
-        onclick={() => setSubsection('msc')}
+        onclick={() => setSubsection("msc")}
         class="px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 {activeSubsection ===
         'msc'
           ? 'bg-slate-800 text-white'
@@ -640,7 +642,7 @@
           <p class="text-slate-700 font-semibold">No notices found</p>
           <p class="text-slate-500 text-sm">
             {searchQuery
-              ? 'Try a different search term'
+              ? "Try a different search term"
               : `There are no examination ${activeSection} posted for ${activeSubsection.toUpperCase()} programs yet.`}
           </p>
         </div>
@@ -664,7 +666,7 @@
                   ? 'bg-green-100 text-green-600'
                   : 'bg-blue-100 text-blue-600'}"
               >
-                {#if activeSection === 'results'}
+                {#if activeSection === "results"}
                   <svg
                     class="w-4 h-4"
                     fill="none"
@@ -722,7 +724,7 @@
                         {getAttachmentType(
                           notice.attachmentUrl,
                           notice.attachmentName,
-                        ) || 'file'}
+                        ) || "file"}
                       </span>
                     {/if}
                   </div>
@@ -770,7 +772,7 @@
 
                   {#if notice.attachmentUrl}
                     <div class="mt-4 p-4 bg-slate-50 rounded-xl">
-                      {#if getAttachmentType(notice.attachmentUrl, notice.attachmentName) === 'image'}
+                      {#if getAttachmentType(notice.attachmentUrl, notice.attachmentName) === "image"}
                         <button
                           onclick={() =>
                             openImagePreview(
@@ -816,28 +818,25 @@
                               ? 'opacity-100'
                               : 'opacity-0'}"
                             onload={() => {
-                              imagesLoaded[notice.id] = true
-                              fullyLoadedUrls.add(notice.attachmentUrl!)
+                              imagesLoaded[notice.id] = true;
+                              fullyLoadedUrls.add(notice.attachmentUrl!);
                             }}
                           />
                         </button>
                       {:else}
                         <a
                           href={notice.attachmentUrl}
-                          download={notice.attachmentName || 'attachment.pdf'}
+                          download={notice.attachmentName || "attachment.pdf"}
                           class="flex items-center gap-3 text-blue-600 hover:text-blue-700"
                         >
-                          <svg
-                            class="w-8 h-8"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm4 18H6V4h7v5h5v11z"
-                            />
-                          </svg>
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg"
+                            alt="PDF file"
+                            class="size-7 shrink-0"
+                            loading="lazy"
+                          />
                           <span class="font-medium"
-                            >{notice.attachmentName || 'View PDF'}</span
+                            >{notice.attachmentName || "View PDF"}</span
                           >
                         </a>
                       {/if}
@@ -934,14 +933,14 @@
     >
       <div class="p-4 border-b border-slate-200">
         <h2 class="text-lg font-bold text-slate-800">
-          {editingNotice ? 'Edit Notice' : 'Create Notice'}
+          {editingNotice ? "Edit Notice" : "Create Notice"}
         </h2>
       </div>
 
       <form
         onsubmit={(e) => {
-          e.preventDefault()
-          handleSubmit()
+          e.preventDefault();
+          handleSubmit();
         }}
         class="p-4 space-y-3"
       >
@@ -1016,7 +1015,7 @@
             <div class="flex p-0.5 bg-slate-100 rounded-lg mb-3">
               <button
                 type="button"
-                onclick={() => (activeAttachmentTab = 'upload')}
+                onclick={() => (activeAttachmentTab = "upload")}
                 class="flex-1 py-1 text-xs font-medium rounded-md transition-all {activeAttachmentTab ===
                 'upload'
                   ? 'bg-white text-slate-800 shadow-sm'
@@ -1026,7 +1025,7 @@
               </button>
               <button
                 type="button"
-                onclick={() => (activeAttachmentTab = 'url')}
+                onclick={() => (activeAttachmentTab = "url")}
                 class="flex-1 py-1 text-xs font-medium rounded-md transition-all {activeAttachmentTab ===
                 'url'
                   ? 'bg-white text-slate-800 shadow-sm'
@@ -1036,7 +1035,7 @@
               </button>
             </div>
 
-            {#if activeAttachmentTab === 'upload'}
+            {#if activeAttachmentTab === "upload"}
               <!-- Upload zone when no file is attached -->
               <label
                 class="flex flex-col items-center justify-center gap-1 w-full h-24 rounded-xl border-2 border-dashed cursor-pointer transition-all {isDragActive
@@ -1091,9 +1090,9 @@
                     disabled={!manualUrlInput.trim()}
                     onclick={() => {
                       if (manualUrlInput.trim()) {
-                        formAttachmentUrl = manualUrlInput.trim()
+                        formAttachmentUrl = manualUrlInput.trim();
                         formAttachmentName =
-                          manualUrlInput.split('/').pop() || 'External Link'
+                          manualUrlInput.split("/").pop() || "External Link";
                       }
                     }}
                     class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1111,7 +1110,7 @@
             <div
               class="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl"
             >
-              {#if getAttachmentType(formAttachmentUrl, formAttachmentName) === 'image'}
+              {#if getAttachmentType(formAttachmentUrl, formAttachmentName) === "image"}
                 <div
                   class="shrink-0 w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center"
                 >
@@ -1150,13 +1149,13 @@
               {/if}
               <div class="flex-1 min-w-0">
                 <p class="font-medium text-slate-800 truncate">
-                  {formAttachmentName || 'Uploaded file'}
+                  {formAttachmentName || "Uploaded file"}
                 </p>
                 <p class="text-sm text-slate-500">
                   {getAttachmentType(formAttachmentUrl, formAttachmentName) ===
-                  'image'
-                    ? 'Image file'
-                    : 'PDF Document'}
+                  "image"
+                    ? "Image file"
+                    : "PDF Document"}
                 </p>
               </div>
               <button
@@ -1224,12 +1223,12 @@
             class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             {isSubmitting
-              ? 'Saving...'
+              ? "Saving..."
               : isUploadingAttachment
-                ? 'Uploading...'
+                ? "Uploading..."
                 : editingNotice
-                  ? 'Update'
-                  : 'Create'}
+                  ? "Update"
+                  : "Create"}
           </button>
         </div>
       </form>
