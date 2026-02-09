@@ -1643,6 +1643,7 @@ export interface NoticeFilters {
   search?: string
   limit?: number
   offset?: number
+  cursor?: string | null
 }
 
 export interface NoticeWritePayload {
@@ -1662,6 +1663,8 @@ export interface PaginationMeta {
   total?: number
   limit: number
   offset: number
+  hasMore?: boolean
+  nextCursor?: string | null
 }
 
 export async function getNotices(
@@ -1681,6 +1684,7 @@ export async function getNotices(
     if (filters?.search) params.append('search', filters.search)
     if (filters?.limit) params.append('limit', filters.limit.toString())
     if (filters?.offset) params.append('offset', filters.offset.toString())
+    if (filters?.cursor) params.append('cursor', filters.cursor)
 
     const queryString = params.toString()
     const url = queryString ? `${API_NOTICES}?${queryString}` : API_NOTICES

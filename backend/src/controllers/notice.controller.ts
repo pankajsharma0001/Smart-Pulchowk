@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { and, desc, eq, ilike, lt, or, sql } from 'drizzle-orm'
 import { db } from '../lib/db.js'
 import { notice, type NewNotice } from '../models/notice-schema.js'
 import { UPLOAD_CONSTANTS, generatePublicId } from '../config/cloudinary.js'
@@ -64,6 +64,33 @@ function toLegacySection(category: string): string {
   return 'routines'
 }
 
+type NoticeCursor = {
+  createdAt: Date
+  id: number
+}
+
+function encodeNoticeCursor(input: NoticeCursor): string {
+  const raw = `${input.createdAt.toISOString()}|${input.id}`
+  return Buffer.from(raw, 'utf8').toString('base64url')
+}
+
+function decodeNoticeCursor(rawCursor?: string | null): NoticeCursor | null {
+  if (!rawCursor) return null
+  try {
+    const decoded = Buffer.from(rawCursor, 'base64url').toString('utf8')
+    const [createdAtRaw, idRaw] = decoded.split('|')
+    if (!createdAtRaw || !idRaw) return null
+    const createdAt = new Date(createdAtRaw)
+    const id = Number(idRaw)
+    if (Number.isNaN(createdAt.getTime()) || !Number.isFinite(id) || id <= 0) {
+      return null
+    }
+    return { createdAt, id: Math.floor(id) }
+  } catch {
+    return null
+  }
+}
+
 // Get all notices (with optional filtering)
 export async function getNotices(req: Request, res: Response) {
   try {
@@ -80,35 +107,47 @@ export async function getNotices(req: Request, res: Response) {
     const limit =
       Number.isFinite(parsedLimit) && parsedLimit > 0
         ? Math.min(Math.floor(parsedLimit), 100)
-        : 20
+        : 5
     const offset =
       Number.isFinite(parsedOffset) && parsedOffset >= 0
         ? Math.floor(parsedOffset)
         : 0
+    const cursor = decodeNoticeCursor(req.query.cursor as string | undefined)
 
-    const filters: any[] = []
-    if (category) filters.push(eq(notice.category, category))
-    if (level) filters.push(eq(notice.level, level))
+    const baseFilters: any[] = []
+    if (category) baseFilters.push(eq(notice.category, category))
+    if (level) baseFilters.push(eq(notice.level, level))
     if (search) {
       const term = `%${search}%`
-      filters.push(
-        or(
-          ilike(notice.title, term),
-          ilike(notice.publishedDate, term),
-          ilike(notice.category, term),
-        ),
-      )
+      baseFilters.push(ilike(notice.title, term))
     }
 
-    const whereClause =
-      filters.length > 1 ? and(...filters) : filters.length === 1 ? filters[0] : undefined
+    const baseWhere =
+      baseFilters.length > 1
+        ? and(...baseFilters)
+        : baseFilters.length === 1
+          ? baseFilters[0]
+          : undefined
+
+    const cursorWhere = cursor
+      ? or(
+          lt(notice.createdAt, cursor.createdAt),
+          and(eq(notice.createdAt, cursor.createdAt), lt(notice.id, cursor.id)),
+        )
+      : undefined
+
+    const whereClause = cursorWhere
+      ? baseWhere
+        ? and(baseWhere, cursorWhere)
+        : cursorWhere
+      : baseWhere
 
     const [totalRow] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(notice)
-      .where(whereClause)
+      .where(baseWhere)
 
-    const results = await db
+    const rawResults = await db
       .select({
         id: notice.id,
         title: notice.title,
@@ -131,9 +170,20 @@ export async function getNotices(req: Request, res: Response) {
       })
       .from(notice)
       .where(whereClause)
-      .orderBy(desc(notice.createdAt))
-      .limit(limit)
-      .offset(offset)
+      .orderBy(desc(notice.createdAt), desc(notice.id))
+      .limit(limit + 1)
+      .offset(cursor ? 0 : offset)
+
+    const hasMore = rawResults.length > limit
+    const results = hasMore ? rawResults.slice(0, limit) : rawResults
+    const lastItem = results.length > 0 ? results[results.length - 1] : null
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeNoticeCursor({
+            createdAt: new Date(lastItem.createdAt),
+            id: lastItem.id,
+          })
+        : null
 
     return res.json({
       success: true,
@@ -141,7 +191,9 @@ export async function getNotices(req: Request, res: Response) {
       meta: {
         total: totalRow?.count ?? 0,
         limit,
-        offset,
+        offset: cursor ? 0 : offset,
+        hasMore,
+        nextCursor,
       },
     })
   } catch (error: any) {

@@ -47,9 +47,25 @@
     return null;
   }
 
+  function getCategoryFromPathname(pathname: string): NoticeCategory | null {
+    const match = pathname.match(
+      /^\/notices\/(results|application_forms|exam_centers|general)\/?$/i,
+    );
+    return asNoticeCategory(match?.[1] || null);
+  }
+
   // State
+  const PAGE_SIZE = 5;
   let activeCategory = $state<NoticeCategory>("results");
   let searchQuery = $state("");
+  let debouncedSearchQuery = $state("");
+  let noticesCursor = $state<string | null>(null);
+  let nextNoticesCursor = $state<string | null>(null);
+  let loadedNotices = $state<Notice[]>([]);
+  let totalNotices = $state(0);
+  let isAppendingNotices = $state(false);
+  let lastAppliedNoticesToken = $state<string | null>(null);
+  let lastNoticesDatasetKey = $state<string | null>(null);
   let expandedNoticeId = $state<number | null>(null);
   let highlightedNoticeId = $state<number | null>(null);
   let hasAppliedNoticeHighlight = $state(false);
@@ -146,16 +162,25 @@
   }
 
   const noticesQuery = createQuery(() => ({
-    queryKey: ["notices", activeCategory],
+    queryKey: ["notices", activeCategory, debouncedSearchQuery, noticesCursor],
     queryFn: async () => {
       const result = await getNotices({
         category: activeCategory,
+        search: debouncedSearchQuery || undefined,
+        limit: PAGE_SIZE,
+        cursor: noticesCursor,
       });
       if (!result.success || !result.data) {
         throw new Error(result.message || "Failed to load notices");
       }
-      return result.data;
+      return {
+        items: result.data,
+        total: result.meta?.total ?? result.data.length,
+        hasMore: !!result.meta?.hasMore,
+        nextCursor: result.meta?.nextCursor ?? null,
+      };
     },
+    staleTime: 20 * 1000,
   }));
 
   const statsQuery = createQuery(() => ({
@@ -167,6 +192,7 @@
       }
       return result.data;
     },
+    staleTime: 5 * 60 * 1000,
   }));
 
   function setCategory(category: NoticeCategory) {
@@ -183,44 +209,71 @@
     }
   }
 
-  // Filtered notices (client-side search)
-  function getFilteredNotices() {
-    let filtered = [...(noticesQuery.data || [])];
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (n) =>
-          n.title.toLowerCase().includes(query) ||
-          n.content.toLowerCase().includes(query),
-      );
-    }
-    return filtered.sort(
-      (a, b) =>
-        new Date(
-          b.publishedDate && !Number.isNaN(new Date(b.publishedDate).getTime())
-            ? b.publishedDate
-            : b.createdAt,
-        ).getTime() -
-        new Date(
-          a.publishedDate && !Number.isNaN(new Date(a.publishedDate).getTime())
-            ? a.publishedDate
-            : a.createdAt,
-        ).getTime(),
-    );
+  const canLoadMoreNotices = $derived(
+    !!nextNoticesCursor || loadedNotices.length < totalNotices,
+  );
+
+  function loadMoreNotices() {
+    if (!canLoadMoreNotices || noticesQuery.isFetching || !nextNoticesCursor) return;
+    isAppendingNotices = true;
+    noticesCursor = nextNoticesCursor;
   }
 
-  const filteredNotices = $derived(getFilteredNotices());
+  const filteredNotices = $derived(loadedNotices);
+
+  $effect(() => {
+    const timeout = window.setTimeout(() => {
+      const nextSearch = searchQuery.trim();
+      if (debouncedSearchQuery !== nextSearch) {
+        debouncedSearchQuery = nextSearch;
+      }
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  });
+
+  $effect(() => {
+    const datasetKey = `${activeCategory}|${debouncedSearchQuery}`;
+    if (lastNoticesDatasetKey === datasetKey) return;
+
+    lastNoticesDatasetKey = datasetKey;
+    noticesCursor = null;
+    nextNoticesCursor = null;
+    loadedNotices = [];
+    totalNotices = 0;
+    isAppendingNotices = false;
+    lastAppliedNoticesToken = null;
+  });
+
+  $effect(() => {
+    const page = noticesQuery.data;
+    if (!page) return;
+
+    const pageToken = `${activeCategory}:${debouncedSearchQuery}:${noticesCursor || "head"}:${noticesQuery.dataUpdatedAt}`;
+    if (lastAppliedNoticesToken === pageToken) return;
+    lastAppliedNoticesToken = pageToken;
+
+    if (noticesCursor === null) {
+      loadedNotices = page.items;
+    } else {
+      const existingIds = new Set(loadedNotices.map((n) => n.id));
+      const merged = [...loadedNotices];
+      for (const item of page.items) {
+        if (!existingIds.has(item.id)) merged.push(item);
+      }
+      loadedNotices = merged;
+    }
+    totalNotices = page.total;
+    nextNoticesCursor = page.hasMore ? page.nextCursor : null;
+    isAppendingNotices = false;
+  });
+
   const categoryCounts = $derived({
     results: statsQuery.data?.results ?? 0,
     application_forms: statsQuery.data?.applicationForms ?? 0,
     exam_centers: statsQuery.data?.examCenters ?? 0,
     general: statsQuery.data?.general ?? 0,
   });
-  // Calculate newCount locally from notices using the same isNoticeNew logic
-  const newCount = $derived(
-    filteredNotices.filter((n) => isNoticeNew(n.publishedDate, n.createdAt))
-      .length,
-  );
+  const newCount = $derived(statsQuery.data?.newCount ?? 0);
 
   const routeCategoryFromPath = $derived(
     asNoticeCategory(
@@ -229,8 +282,16 @@
   );
 
   function syncNoticesRouteState() {
+    const categoryFromPathname =
+      typeof window !== "undefined"
+        ? getCategoryFromPathname(window.location.pathname)
+        : null;
     const categoryFromQuery = asNoticeCategory(routeQuery("category"));
-    const resolvedCategory = routeCategoryFromPath || categoryFromQuery || "results";
+    const resolvedCategory =
+      categoryFromPathname ||
+      routeCategoryFromPath ||
+      categoryFromQuery ||
+      activeCategory;
     if (activeCategory !== resolvedCategory) {
       activeCategory = resolvedCategory;
     }
@@ -756,7 +817,7 @@
           <p class="text-slate-500 font-medium">Loading notices...</p>
         </div>
       </div>
-    {:else if noticesQuery.error}
+    {:else if noticesQuery.error && filteredNotices.length === 0}
       <div class="flex items-center justify-center py-20">
         <div class="flex flex-col items-center gap-4 text-center">
           <div
@@ -1108,6 +1169,22 @@
             {/if}
           </div>
         {/each}
+
+        {#if canLoadMoreNotices}
+          <div class="pt-2 flex justify-center">
+            <button
+              onclick={loadMoreNotices}
+              disabled={isAppendingNotices || noticesQuery.isFetching}
+              class="px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {#if isAppendingNotices || noticesQuery.isFetching}
+                Loading...
+              {:else}
+                Load more
+              {/if}
+            </button>
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
