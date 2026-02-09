@@ -34,6 +34,14 @@
     letter-spacing: -0.01em;
   }
 
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
   input,
   textarea,
   select {

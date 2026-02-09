@@ -1661,6 +1661,7 @@ export interface NoticeWritePayload {
 
 export interface PaginationMeta {
   total?: number
+  newCount?: number
   limit: number
   offset: number
   hasMore?: boolean

@@ -104,37 +104,76 @@
   }));
 
   const markReadMutation = createMutation(() => ({
-    mutationFn: async (notificationId: number) =>
-      markInAppNotificationRead(notificationId),
-    onSuccess: (_result, notificationId) => {
-      loadedNotifications = loadedNotifications.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, isRead: true, readAt: new Date().toISOString() }
-          : notification,
-      );
-      if (showUnreadOnly) {
-        loadedNotifications = loadedNotifications.filter(
-          (notification) => notification.id !== notificationId,
+    mutationFn: async (notificationId: number) => {
+      const result = await markInAppNotificationRead(notificationId);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to mark notification as read");
+      }
+      return result;
+    },
+    onMutate: async (notificationId: number) => {
+      const prevLoadedNotifications = loadedNotifications;
+      const prevTotalNotifications = totalNotifications;
+      const prevUnreadCount =
+        queryClient.getQueryData<number>(["notifications-unread-count"]) ?? 0;
+      const target = loadedNotifications.find((n) => n.id === notificationId);
+      const wasUnread = !!target && !target.isRead;
+
+      if (target && wasUnread) {
+        loadedNotifications = loadedNotifications.map((notification) =>
+          notification.id === notificationId
+            ? { ...notification, isRead: true, readAt: new Date().toISOString() }
+            : notification,
         );
-        totalNotifications = Math.max(0, totalNotifications - 1);
+
+        if (showUnreadOnly) {
+          loadedNotifications = loadedNotifications.filter(
+            (notification) => notification.id !== notificationId,
+          );
+          totalNotifications = Math.max(0, totalNotifications - 1);
+        }
+
+        const nextUnread = Math.max(0, prevUnreadCount - 1);
+        queryClient.setQueryData(["notifications-unread-count"], nextUnread);
+        publishUnreadCount(nextUnread);
       }
 
-      const currentUnread =
-        queryClient.getQueryData<number>(["notifications-unread-count"]) ?? 0;
-      const nextUnread = Math.max(0, currentUnread - 1);
-      queryClient.setQueryData(["notifications-unread-count"], nextUnread);
-      publishUnreadCount(nextUnread);
-
+      return {
+        prevLoadedNotifications,
+        prevTotalNotifications,
+        prevUnreadCount,
+        wasUnread,
+      };
+    },
+    onError: (_error, _notificationId, context) => {
+      if (!context) return;
+      loadedNotifications = context.prevLoadedNotifications;
+      totalNotifications = context.prevTotalNotifications;
+      queryClient.setQueryData(
+        ["notifications-unread-count"],
+        context.prevUnreadCount,
+      );
+      publishUnreadCount(context.prevUnreadCount);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["in-app-notifications"] });
-      queryClient.invalidateQueries({
-        queryKey: ["notifications-unread-count"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
     },
   }));
 
   const markAllMutation = createMutation(() => ({
-    mutationFn: async () => markAllInAppNotificationsRead(),
-    onSuccess: () => {
+    mutationFn: async () => {
+      const result = await markAllInAppNotificationsRead();
+      if (!result.success) {
+        throw new Error(result.message || "Failed to mark all notifications as read");
+      }
+      return result;
+    },
+    onMutate: async () => {
+      const prevLoadedNotifications = loadedNotifications;
+      const prevTotalNotifications = totalNotifications;
+      const prevUnreadCount =
+        queryClient.getQueryData<number>(["notifications-unread-count"]) ?? 0;
       const nowIso = new Date().toISOString();
       loadedNotifications = showUnreadOnly
         ? []
@@ -147,11 +186,21 @@
 
       queryClient.setQueryData(["notifications-unread-count"], 0);
       publishUnreadCount(0);
-
+      return { prevLoadedNotifications, prevTotalNotifications, prevUnreadCount };
+    },
+    onError: (_error, _variables, context) => {
+      if (!context) return;
+      loadedNotifications = context.prevLoadedNotifications;
+      totalNotifications = context.prevTotalNotifications;
+      queryClient.setQueryData(
+        ["notifications-unread-count"],
+        context.prevUnreadCount,
+      );
+      publishUnreadCount(context.prevUnreadCount);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["in-app-notifications"] });
-      queryClient.invalidateQueries({
-        queryKey: ["notifications-unread-count"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
     },
   }));
 

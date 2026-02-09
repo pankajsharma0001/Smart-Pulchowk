@@ -54,13 +54,27 @@
     return asNoticeCategory(match?.[1] || null);
   }
 
+  function getInitialActiveCategory(): NoticeCategory {
+    if (typeof window !== "undefined") {
+      const fromPath = getCategoryFromPathname(window.location.pathname);
+      if (fromPath) return fromPath;
+    }
+    const fromRoute = asNoticeCategory(
+      (route?.result?.path?.params?.category as string | undefined) || null,
+    );
+    if (fromRoute) return fromRoute;
+    const fromQuery = asNoticeCategory(routeQuery("category"));
+    if (fromQuery) return fromQuery;
+    return "results";
+  }
+
   // State
   const PAGE_SIZE = 5;
-  let activeCategory = $state<NoticeCategory>("results");
+  let activeCategory = $state<NoticeCategory>(getInitialActiveCategory());
   let searchQuery = $state("");
   let debouncedSearchQuery = $state("");
-  let noticesCursor = $state<string | null>(null);
-  let nextNoticesCursor = $state<string | null>(null);
+  let noticesOffset = $state(0);
+  let newCountSnapshot = $state(0);
   let loadedNotices = $state<Notice[]>([]);
   let totalNotices = $state(0);
   let isAppendingNotices = $state(false);
@@ -162,13 +176,18 @@
   }
 
   const noticesQuery = createQuery(() => ({
-    queryKey: ["notices", activeCategory, debouncedSearchQuery, noticesCursor],
+    queryKey: [
+      "notices",
+      activeCategory,
+      debouncedSearchQuery,
+      noticesOffset,
+    ],
     queryFn: async () => {
       const result = await getNotices({
         category: activeCategory,
         search: debouncedSearchQuery || undefined,
         limit: PAGE_SIZE,
-        cursor: noticesCursor,
+        offset: noticesOffset,
       });
       if (!result.success || !result.data) {
         throw new Error(result.message || "Failed to load notices");
@@ -176,8 +195,6 @@
       return {
         items: result.data,
         total: result.meta?.total ?? result.data.length,
-        hasMore: !!result.meta?.hasMore,
-        nextCursor: result.meta?.nextCursor ?? null,
       };
     },
     staleTime: 20 * 1000,
@@ -209,17 +226,31 @@
     }
   }
 
-  const canLoadMoreNotices = $derived(
-    !!nextNoticesCursor || loadedNotices.length < totalNotices,
-  );
+  const canLoadMoreNotices = $derived(loadedNotices.length < totalNotices);
 
   function loadMoreNotices() {
-    if (!canLoadMoreNotices || noticesQuery.isFetching || !nextNoticesCursor) return;
+    if (!canLoadMoreNotices || noticesQuery.isFetching) return;
     isAppendingNotices = true;
-    noticesCursor = nextNoticesCursor;
+    noticesOffset = loadedNotices.length;
+  }
+  function getNoticeSortTime(notice: Notice) {
+    const publishedRaw = notice.publishedDate?.trim();
+    if (publishedRaw) {
+      const parsedPublished = new Date(publishedRaw);
+      if (!Number.isNaN(parsedPublished.getTime())) {
+        return parsedPublished.getTime();
+      }
+    }
+    const created = new Date(notice.createdAt || "");
+    if (!Number.isNaN(created.getTime())) return created.getTime();
+    return 0;
   }
 
-  const filteredNotices = $derived(loadedNotices);
+  function sortNoticesLatestFirst(list: Notice[]) {
+    return [...list].sort((a, b) => getNoticeSortTime(b) - getNoticeSortTime(a));
+  }
+
+  const filteredNotices = $derived(sortNoticesLatestFirst(loadedNotices));
 
   $effect(() => {
     const timeout = window.setTimeout(() => {
@@ -236,8 +267,8 @@
     if (lastNoticesDatasetKey === datasetKey) return;
 
     lastNoticesDatasetKey = datasetKey;
-    noticesCursor = null;
-    nextNoticesCursor = null;
+    noticesOffset = 0;
+    newCountSnapshot = 0;
     loadedNotices = [];
     totalNotices = 0;
     isAppendingNotices = false;
@@ -248,22 +279,27 @@
     const page = noticesQuery.data;
     if (!page) return;
 
-    const pageToken = `${activeCategory}:${debouncedSearchQuery}:${noticesCursor || "head"}:${noticesQuery.dataUpdatedAt}`;
+    const pageToken = `${activeCategory}:${debouncedSearchQuery}:${noticesOffset}:${noticesQuery.dataUpdatedAt}`;
     if (lastAppliedNoticesToken === pageToken) return;
     lastAppliedNoticesToken = pageToken;
 
-    if (noticesCursor === null) {
-      loadedNotices = page.items;
+    let nextLoadedNotices: Notice[] = [];
+    if (noticesOffset === 0) {
+      nextLoadedNotices = page.items;
+      loadedNotices = nextLoadedNotices;
+      newCountSnapshot = nextLoadedNotices.filter((n) =>
+        isNoticeNew(n.publishedDate, n.createdAt),
+      ).length;
     } else {
       const existingIds = new Set(loadedNotices.map((n) => n.id));
       const merged = [...loadedNotices];
       for (const item of page.items) {
         if (!existingIds.has(item.id)) merged.push(item);
       }
-      loadedNotices = merged;
+      nextLoadedNotices = merged;
+      loadedNotices = nextLoadedNotices;
     }
     totalNotices = page.total;
-    nextNoticesCursor = page.hasMore ? page.nextCursor : null;
     isAppendingNotices = false;
   });
 
@@ -273,7 +309,7 @@
     exam_centers: statsQuery.data?.examCenters ?? 0,
     general: statsQuery.data?.general ?? 0,
   });
-  const newCount = $derived(statsQuery.data?.newCount ?? 0);
+  const newCount = $derived(newCountSnapshot);
 
   const routeCategoryFromPath = $derived(
     asNoticeCategory(
@@ -808,7 +844,7 @@
     {/if}
 
     <!-- Loading State -->
-    {#if noticesQuery.isLoading}
+    {#if noticesQuery.isLoading && loadedNotices.length === 0}
       <div class="flex items-center justify-center py-20">
         <div class="flex flex-col items-center gap-4">
           <div

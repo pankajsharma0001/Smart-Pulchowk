@@ -64,13 +64,28 @@ function toLegacySection(category: string): string {
   return 'routines'
 }
 
+function noticeSortTimestampSql() {
+  return sql<Date>`
+    coalesce(
+      case
+        when ${notice.publishedDate} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          then (${notice.publishedDate}::date)::timestamp
+        when ${notice.publishedDate} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}[T\\s][0-9]{2}:[0-9]{2}'
+          then ${notice.publishedDate}::timestamp
+        else null
+      end,
+      ${notice.createdAt}
+    )
+  `
+}
+
 type NoticeCursor = {
-  createdAt: Date
+  sortAt: Date
   id: number
 }
 
 function encodeNoticeCursor(input: NoticeCursor): string {
-  const raw = `${input.createdAt.toISOString()}|${input.id}`
+  const raw = `${input.sortAt.toISOString()}|${input.id}`
   return Buffer.from(raw, 'utf8').toString('base64url')
 }
 
@@ -78,14 +93,14 @@ function decodeNoticeCursor(rawCursor?: string | null): NoticeCursor | null {
   if (!rawCursor) return null
   try {
     const decoded = Buffer.from(rawCursor, 'base64url').toString('utf8')
-    const [createdAtRaw, idRaw] = decoded.split('|')
-    if (!createdAtRaw || !idRaw) return null
-    const createdAt = new Date(createdAtRaw)
+    const [sortAtRaw, idRaw] = decoded.split('|')
+    if (!sortAtRaw || !idRaw) return null
+    const sortAt = new Date(sortAtRaw)
     const id = Number(idRaw)
-    if (Number.isNaN(createdAt.getTime()) || !Number.isFinite(id) || id <= 0) {
+    if (Number.isNaN(sortAt.getTime()) || !Number.isFinite(id) || id <= 0) {
       return null
     }
-    return { createdAt, id: Math.floor(id) }
+    return { sortAt, id: Math.floor(id) }
   } catch {
     return null
   }
@@ -129,10 +144,12 @@ export async function getNotices(req: Request, res: Response) {
           ? baseFilters[0]
           : undefined
 
+    const sortTimestamp = noticeSortTimestampSql()
+
     const cursorWhere = cursor
       ? or(
-          lt(notice.createdAt, cursor.createdAt),
-          and(eq(notice.createdAt, cursor.createdAt), lt(notice.id, cursor.id)),
+          sql`${sortTimestamp} < ${cursor.sortAt}`,
+          and(sql`${sortTimestamp} = ${cursor.sortAt}`, lt(notice.id, cursor.id)),
         )
       : undefined
 
@@ -146,6 +163,18 @@ export async function getNotices(req: Request, res: Response) {
       .select({ count: sql<number>`count(*)::int` })
       .from(notice)
       .where(baseWhere)
+
+    const [newRow] = await db
+      .select({
+        count:
+          sql<number>`count(*)::int`,
+      })
+      .from(notice)
+      .where(
+        baseWhere
+          ? and(baseWhere, sql`${sortTimestamp} >= now() - interval '7 days'`)
+          : sql`${sortTimestamp} >= now() - interval '7 days'`,
+      )
 
     const rawResults = await db
       .select({
@@ -170,7 +199,7 @@ export async function getNotices(req: Request, res: Response) {
       })
       .from(notice)
       .where(whereClause)
-      .orderBy(desc(notice.createdAt), desc(notice.id))
+      .orderBy(desc(sortTimestamp), desc(notice.id))
       .limit(limit + 1)
       .offset(cursor ? 0 : offset)
 
@@ -180,7 +209,16 @@ export async function getNotices(req: Request, res: Response) {
     const nextCursor =
       hasMore && lastItem
         ? encodeNoticeCursor({
-            createdAt: new Date(lastItem.createdAt),
+            sortAt: new Date(
+              (() => {
+                const raw = lastItem.publishedDate?.trim()
+                if (raw) {
+                  const parsed = new Date(raw)
+                  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString()
+                }
+                return lastItem.createdAt
+              })(),
+            ),
             id: lastItem.id,
           })
         : null
@@ -190,6 +228,7 @@ export async function getNotices(req: Request, res: Response) {
       data: results,
       meta: {
         total: totalRow?.count ?? 0,
+        newCount: newRow?.count ?? 0,
         limit,
         offset: cursor ? 0 : offset,
         hasMore,
