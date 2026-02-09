@@ -8,11 +8,16 @@
     getMyBookListings,
     getSavedBooks,
     getMyPurchaseRequests,
+    getMyMarketplaceReports,
+    getBlockedMarketplaceUsers,
+    unblockMarketplaceUser,
     deleteBookListing,
     markBookAsSold,
     unsaveBook,
     deletePurchaseRequest,
     getConversations,
+    type BlockedUser,
+    type MarketplaceReport,
   } from '../lib/api'
   import LoadingSpinner from '../components/LoadingSpinner.svelte'
   import ChatInterface from '../components/ChatInterface.svelte'
@@ -25,10 +30,13 @@
   const queryClient = useQueryClient()
 
   const initialTab = (routeQuery('tab') as any) || 'listings'
-  let activeTab = $state<'listings' | 'saved' | 'requests' | 'messages'>(
+  let activeTab = $state<
+    'listings' | 'saved' | 'requests' | 'messages' | 'reports' | 'blocks'
+  >(
     initialTab,
   )
   let hasRedirectedToLogin = $state(false)
+  let unblockingId = $state<string | null>(null)
 
   $effect(() => {
     if (hasRedirectedToLogin) return
@@ -86,6 +94,26 @@
     enabled: !!$session.data?.user,
   }))
 
+  const reportsQuery = createQuery(() => ({
+    queryKey: ['my-marketplace-reports'],
+    queryFn: async () => {
+      const result = await getMyMarketplaceReports()
+      if (result.success && result.data) return result.data
+      throw new Error(result.message || 'Failed to load reports')
+    },
+    enabled: !!$session.data?.user,
+  }))
+
+  const blockedUsersQuery = createQuery(() => ({
+    queryKey: ['my-blocked-users'],
+    queryFn: async () => {
+      const result = await getBlockedMarketplaceUsers()
+      if (result.success && result.data) return result.data
+      throw new Error(result.message || 'Failed to load blocked users')
+    },
+    enabled: !!$session.data?.user,
+  }))
+
   const conditionLabels: Record<string, string> = {
     new: 'New',
     like_new: 'Like New',
@@ -107,6 +135,16 @@
     pending: 'bg-yellow-100 text-yellow-700',
     sold: 'bg-gray-100 text-gray-700',
     removed: 'bg-red-100 text-red-700',
+  }
+
+  const reportStatusColors: Record<
+    MarketplaceReport['status'],
+    string
+  > = {
+    open: 'bg-amber-100 text-amber-700 border-amber-200',
+    in_review: 'bg-blue-100 text-blue-700 border-blue-200',
+    resolved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    rejected: 'bg-slate-100 text-slate-600 border-slate-200',
   }
 
   function formatPrice(price: string) {
@@ -151,6 +189,24 @@
       queryClient.invalidateQueries({
         queryKey: ['my-purchase-requests'],
       })
+    }
+  }
+
+  async function handleUnblock(user: BlockedUser) {
+    unblockingId = user.blockedUserId
+    try {
+      const result = await unblockMarketplaceUser(user.blockedUserId)
+      if (result.success) {
+        await queryClient.invalidateQueries({
+          queryKey: ['my-blocked-users'],
+        })
+      } else {
+        alert(result.message || 'Failed to unblock user')
+      }
+    } catch (error) {
+      console.error('Unblock error:', error)
+    } finally {
+      unblockingId = null
     }
   }
 </script>
@@ -291,6 +347,44 @@
               : 'bg-gray-100 font-bold text-blue-600'}"
           >
             {conversationsQuery.data.length}
+          </span>
+        {/if}
+      </button>
+      <button
+        onclick={() => (activeTab = 'reports')}
+        class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all {activeTab ===
+        'reports'
+          ? 'bg-blue-600 text-white shadow-sm'
+          : 'text-gray-600 hover:bg-gray-50'}"
+      >
+        My Reports
+        {#if reportsQuery.data}
+          <span
+            class="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full {activeTab ===
+            'reports'
+              ? 'bg-blue-500'
+              : 'bg-gray-100'}"
+          >
+            {reportsQuery.data.length}
+          </span>
+        {/if}
+      </button>
+      <button
+        onclick={() => (activeTab = 'blocks')}
+        class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all {activeTab ===
+        'blocks'
+          ? 'bg-blue-600 text-white shadow-sm'
+          : 'text-gray-600 hover:bg-gray-50'}"
+      >
+        Blocked Users
+        {#if blockedUsersQuery.data}
+          <span
+            class="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full {activeTab ===
+            'blocks'
+              ? 'bg-blue-500'
+              : 'bg-gray-100'}"
+          >
+            {blockedUsersQuery.data.length}
           </span>
         {/if}
       </button>
@@ -882,6 +976,149 @@
       <div in:fade={{ duration: 200 }}>
         <ChatInterface />
       </div>
+    {/if}
+
+    {#if activeTab === 'reports'}
+      {#if reportsQuery.isLoading}
+        <div class="flex items-center justify-center py-10" in:fade>
+          <LoadingSpinner size="lg" text="Loading reports..." />
+        </div>
+      {:else if reportsQuery.error}
+        <div
+          class="p-4 bg-white border border-red-100 rounded-2xl text-center text-sm"
+        >
+          <p class="text-red-600 mb-3">
+            {reportsQuery.error.message}
+          </p>
+          <button
+            onclick={() => reportsQuery.refetch()}
+            class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm"
+          >
+            Try Again
+          </button>
+        </div>
+      {:else if !reportsQuery.data || reportsQuery.data.length === 0}
+        <div
+          class="text-center py-10 bg-white rounded-2xl border border-gray-100"
+          in:fade
+        >
+          <h3 class="text-base font-medium text-gray-900 mb-2">
+            No reports submitted
+          </h3>
+          <p class="text-sm text-gray-500">
+            Reports you submit from marketplace listings will show here.
+          </p>
+        </div>
+      {:else}
+        <div class="space-y-3" in:fade>
+          {#each reportsQuery.data as report}
+            <div class="bg-white rounded-xl border border-gray-100 p-4">
+              <div class="flex items-start justify-between gap-3 mb-2">
+                <span
+                  class="inline-flex px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest border {reportStatusColors[
+                    report.status
+                  ]}"
+                >
+                  {report.status.replace('_', ' ')}
+                </span>
+                <span class="text-[10px] text-gray-400">
+                  {formatDate(report.createdAt)}
+                </span>
+              </div>
+              <p class="text-sm font-semibold text-gray-900">
+                Report against {report.reportedUser?.name}
+              </p>
+              <p class="mt-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                "{report.description}"
+              </p>
+              {#if report.resolutionNotes}
+                <div
+                  class="mt-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-2.5"
+                >
+                  Admin response: {report.resolutionNotes}
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    {/if}
+
+    {#if activeTab === 'blocks'}
+      {#if blockedUsersQuery.isLoading}
+        <div class="flex items-center justify-center py-10" in:fade>
+          <LoadingSpinner size="lg" text="Loading blocked users..." />
+        </div>
+      {:else if blockedUsersQuery.error}
+        <div
+          class="p-4 bg-white border border-red-100 rounded-2xl text-center text-sm"
+        >
+          <p class="text-red-600 mb-3">
+            {blockedUsersQuery.error.message}
+          </p>
+          <button
+            onclick={() => blockedUsersQuery.refetch()}
+            class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm"
+          >
+            Try Again
+          </button>
+        </div>
+      {:else if !blockedUsersQuery.data || blockedUsersQuery.data.length === 0}
+        <div
+          class="text-center py-10 bg-white rounded-2xl border border-gray-100"
+          in:fade
+        >
+          <h3 class="text-base font-medium text-gray-900 mb-2">
+            No blocked users
+          </h3>
+          <p class="text-sm text-gray-500">
+            Users you block in marketplace will be listed here.
+          </p>
+        </div>
+      {:else}
+        <div class="space-y-2.5" in:fade>
+          {#each blockedUsersQuery.data as block}
+            <div
+              class="bg-white rounded-xl border border-gray-100 p-3 flex items-center justify-between gap-3"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <div
+                  class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 overflow-hidden shrink-0"
+                >
+                  {#if block.blockedUser?.image}
+                    <img
+                      src={block.blockedUser.image}
+                      alt=""
+                      class="w-full h-full object-cover"
+                    />
+                  {:else}
+                    <div
+                      class="w-full h-full flex items-center justify-center text-rose-600 font-bold"
+                    >
+                      {block.blockedUser?.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                  {/if}
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-gray-900 truncate">
+                    {block.blockedUser?.name}
+                  </p>
+                  <p class="text-[11px] text-gray-500 truncate">
+                    Blocked on {formatDate(block.createdAt)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onclick={() => handleUnblock(block)}
+                disabled={unblockingId === block.blockedUserId}
+                class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 whitespace-nowrap"
+              >
+                {unblockingId === block.blockedUserId ? 'Unblocking...' : 'Unblock'}
+              </button>
+            </div>
+          {/each}
+        </div>
+      {/if}
     {/if}
   </div>
 </div>

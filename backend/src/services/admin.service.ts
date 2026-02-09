@@ -12,6 +12,8 @@ import {
   reviewMarketplaceReport,
   type ReportStatus,
 } from "./trust.service.js";
+import { sendToUser } from "./notification.service.js";
+import { createInAppNotificationForAudience } from "./inAppNotification.service.js";
 
 const ALLOWED_ROLES = [
   "student",
@@ -128,6 +130,21 @@ export async function updateUserRoleByAdmin(input: {
       role: user.role,
       isVerifiedSeller: user.isVerifiedSeller,
     });
+
+  if (updated && targetUser.role !== role) {
+    sendToUser(updated.id, {
+      title: "Role updated",
+      body: `Your account role is now ${role}.`,
+      data: {
+        type: "role_changed",
+        previousRole: targetUser.role,
+        nextRole: role,
+        iconKey: "general",
+      },
+    }).catch((error) =>
+      console.error("Failed to send role change notification:", error),
+    );
+  }
 
   return {
     success: true,
@@ -325,5 +342,37 @@ export async function unblockUserByAdmin(blockId: number) {
     success: true,
     message: "User unblocked successfully by admin.",
     data: deleted,
+  };
+}
+
+export async function publishSystemAnnouncement(input: {
+  title: string;
+  body: string;
+  audience?: "all" | "students" | "teachers" | "admins";
+  actorId: string;
+}) {
+  const audience = input.audience ?? "all";
+  const title = input.title.trim();
+  const body = input.body.trim();
+
+  if (!title || !body) {
+    return { success: false, message: "Title and body are required." };
+  }
+
+  await createInAppNotificationForAudience({
+    audience,
+    type: "system_announcement",
+    title,
+    body,
+    data: {
+      type: "system_announcement",
+      actorId: input.actorId,
+      iconKey: "general",
+    },
+  });
+
+  return {
+    success: true,
+    message: "Announcement published.",
   };
 }

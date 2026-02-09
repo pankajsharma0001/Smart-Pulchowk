@@ -22,6 +22,12 @@ import {
   bookPurchaseRequests,
 } from "../models/book_buy_sell-schema.js";
 import { user } from "../models/auth-schema.js";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  mergeNotificationPreferences,
+  normalizeNotificationPreferences,
+  type NotificationPreferences,
+} from "../lib/notification-preferences.js";
 
 type Audience = (typeof notificationAudienceEnum.enumValues)[number];
 type UserRole = "student" | "teacher" | "admin" | "notice_manager" | string;
@@ -42,12 +48,12 @@ function isImageUrl(url: string) {
 
 function inferIconKey(type: string) {
   const lower = type.toLowerCase();
+  if (lower.includes("chat")) return "chat";
   if (lower.includes("event")) return "event";
   if (
     lower.includes("book") ||
     lower.includes("purchase") ||
-    lower.includes("request") ||
-    lower.includes("chat")
+    lower.includes("request")
   ) {
     return "book";
   }
@@ -303,18 +309,117 @@ function getVisibleAudiencesForRole(role?: UserRole): Audience[] {
 }
 
 function getRoleTypeFilter(role?: UserRole): SQL | null {
-  if (role === "notice_manager" || role === "admin") {
-    // Keep admin/notice_manager feeds focused on notice or admin-system updates.
+  if (role === "notice_manager") {
     return sql`(
       ${notifications.type} like 'notice_%'
       or ${notifications.type} like 'admin_%'
+      or ${notifications.type} = 'system_announcement'
+    )`;
+  }
+  if (role === "admin") {
+    // Keep admin feeds focused on moderation/system updates.
+    return sql`(
+      ${notifications.type} like 'notice_%'
+      or ${notifications.type} like 'admin_%'
+      or ${notifications.type} in ('system_announcement', 'role_changed', 'security_alert')
     )`;
   }
   return null;
 }
 
-function buildVisibilityFilter(userId: string, role?: UserRole) {
+function isNotificationTypeAllowedByPreferences(
+  type: string,
+  preferences: NotificationPreferences,
+  data?: Record<string, string | number | boolean | null>,
+) {
+  const lower = type.toLowerCase();
+  const iconKey = typeof data?.iconKey === "string" ? data.iconKey.toLowerCase() : "";
+
+  const isEventType = lower.startsWith("event_") || lower === "new_event";
+  const isNoticeType = lower.startsWith("notice_");
+  const isMarketplaceType =
+    lower === "book_listed" ||
+    lower === "new_book" ||
+    lower === "purchase_request" ||
+    lower === "request_response" ||
+    iconKey === "book";
+  const isClassroomType =
+    lower === "new_assignment" ||
+    lower === "grading_update" ||
+    lower === "assignment_deadline" ||
+    iconKey === "classroom";
+  const isChatType = lower === "chat_message" || lower === "chat_mention";
+  const isAdminType =
+    lower.startsWith("admin_") ||
+    lower === "role_changed" ||
+    lower === "security_alert" ||
+    lower === "system_announcement";
+
+  if (isEventType && !preferences.eventReminders) return false;
+  if (isNoticeType && !preferences.noticeUpdates) return false;
+  if (isMarketplaceType && !preferences.marketplaceAlerts) return false;
+  if (isClassroomType && !preferences.classroomAlerts) return false;
+  if (isChatType && !preferences.chatAlerts) return false;
+  if (isAdminType && !preferences.adminAlerts) return false;
+
+  return true;
+}
+
+function getPreferenceTypeFilter(preferences: NotificationPreferences) {
+  const filters: SQL[] = [];
+
+  if (!preferences.eventReminders) {
+    filters.push(
+      sql`not (
+        ${notifications.type} like 'event_%'
+        or ${notifications.type} = 'new_event'
+      )`,
+    );
+  }
+
+  if (!preferences.marketplaceAlerts) {
+    filters.push(
+      sql`not (
+        ${notifications.type} in ('book_listed', 'new_book', 'purchase_request', 'request_response', 'purchase_request_cancelled', 'purchase_request_removed')
+        or coalesce(${notifications.data}->>'iconKey', '') = 'book'
+      )`,
+    );
+  }
+
+  if (!preferences.noticeUpdates) {
+    filters.push(sql`not (${notifications.type} like 'notice_%')`);
+  }
+  if (!preferences.classroomAlerts) {
+    filters.push(
+      sql`not (
+        ${notifications.type} in ('new_assignment', 'grading_update', 'assignment_deadline')
+        or coalesce(${notifications.data}->>'iconKey', '') = 'classroom'
+      )`,
+    );
+  }
+  if (!preferences.chatAlerts) {
+    filters.push(sql`not (${notifications.type} in ('chat_message', 'chat_mention'))`);
+  }
+  if (!preferences.adminAlerts) {
+    filters.push(
+      sql`not (
+        ${notifications.type} like 'admin_%'
+        or ${notifications.type} in ('role_changed', 'security_alert', 'system_announcement')
+      )`,
+    );
+  }
+
+  if (filters.length === 0) return null;
+  return and(...filters);
+}
+
+function buildVisibilityFilter(
+  userId: string,
+  role?: UserRole,
+  preferences: NotificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+) {
   const roleTypeFilter = getRoleTypeFilter(role);
+  const preferenceTypeFilter = getPreferenceTypeFilter(preferences);
 
   const baseFilters: SQL[] = [
     or(
@@ -377,10 +482,46 @@ function buildVisibilityFilter(userId: string, role?: UserRole) {
 
   const baseFilter = and(...baseFilters);
 
-  if (roleTypeFilter) {
-    return and(baseFilter, roleTypeFilter);
-  }
-  return baseFilter;
+  const combined: SQL[] = [baseFilter];
+  if (roleTypeFilter) combined.push(roleTypeFilter);
+  if (preferenceTypeFilter) combined.push(preferenceTypeFilter);
+
+  return combined.length > 1 ? and(...combined) : combined[0];
+}
+
+export async function getNotificationPreferencesForUser(userId: string) {
+  const dbUser = await db.query.user.findFirst({
+    where: eq(user.id, userId),
+    columns: {
+      notificationPreferences: true,
+    },
+  });
+
+  return {
+    success: true,
+    data: normalizeNotificationPreferences(dbUser?.notificationPreferences),
+  };
+}
+
+export async function updateNotificationPreferencesForUser(
+  userId: string,
+  patch: Partial<NotificationPreferences>,
+) {
+  const existing = await getNotificationPreferencesForUser(userId);
+  const nextPreferences = mergeNotificationPreferences(existing.data, patch);
+
+  await db
+    .update(user)
+    .set({
+      notificationPreferences: nextPreferences,
+      updatedAt: new Date(),
+    })
+    .where(eq(user.id, userId));
+
+  return {
+    success: true,
+    data: nextPreferences,
+  };
 }
 
 export async function createInAppNotificationForUser(input: {
@@ -390,6 +531,11 @@ export async function createInAppNotificationForUser(input: {
   body: string;
   data?: Record<string, string | number | boolean | null>;
 }) {
+  const prefs = await getNotificationPreferencesForUser(input.userId);
+  if (!isNotificationTypeAllowedByPreferences(input.type, prefs.data, input.data)) {
+    return null;
+  }
+
   const [created] = await db
     .insert(notifications)
     .values({
@@ -415,14 +561,38 @@ export async function createInAppNotificationsForUsers(input: {
   const uniqueUserIds = [...new Set(input.userIds.filter(Boolean))];
   if (uniqueUserIds.length === 0) return [];
 
-  const rows = uniqueUserIds.map((userId) => ({
+  const userRows = await db.query.user.findMany({
+    where: inArray(user.id, uniqueUserIds),
+    columns: {
+      id: true,
+      notificationPreferences: true,
+    },
+  });
+
+  const allowedUserIds = new Set(
+    userRows
+      .filter((row) =>
+        isNotificationTypeAllowedByPreferences(
+          input.type,
+          normalizeNotificationPreferences(row.notificationPreferences),
+          input.data,
+        ),
+      )
+      .map((row) => row.id),
+  );
+
+  if (allowedUserIds.size === 0) return [];
+
+  const rows = uniqueUserIds
+    .filter((userId) => allowedUserIds.has(userId))
+    .map((userId) => ({
     type: input.type,
     title: input.title,
     body: input.body,
     data: input.data,
     recipientId: userId,
     audience: "direct" as const,
-  }));
+    }));
 
   return db.insert(notifications).values(rows).returning();
 }
@@ -447,6 +617,64 @@ export async function createInAppNotificationForAudience(input: {
     .returning();
 
   return created;
+}
+
+export async function hasUnreadNotificationOfTypes(input: {
+  userId: string;
+  types: string[];
+  since?: Date;
+  conversationId?: number;
+}) {
+  const typeList = [...new Set(input.types.filter(Boolean))];
+  if (typeList.length === 0) return false;
+
+  const rows = await db
+    .select({ id: notifications.id })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.recipientId, input.userId),
+        inArray(notifications.type, typeList),
+        isNull(
+          sql`(
+            select ${notificationReads.id}
+            from ${notificationReads}
+            where ${notificationReads.notificationId} = ${notifications.id}
+              and ${notificationReads.userId} = ${input.userId}
+            limit 1
+          )`,
+        ),
+        input.since ? sql`${notifications.createdAt} >= ${input.since}` : sql`true`,
+        input.conversationId
+          ? sql`coalesce(${notifications.data}->>'conversationId', '') = ${String(
+              input.conversationId,
+            )}`
+          : sql`true`,
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0;
+}
+
+export async function hasNotificationByReminderKey(input: {
+  type: string;
+  userId?: string | null;
+  reminderKey: string;
+}) {
+  const rows = await db
+    .select({ id: notifications.id })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.type, input.type),
+        input.userId ? eq(notifications.recipientId, input.userId) : sql`true`,
+        sql`coalesce(${notifications.data}->>'reminderKey', '') = ${input.reminderKey}`,
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0;
 }
 
 export async function deleteNoticeNotificationsByNoticeId(input: {
@@ -481,7 +709,8 @@ export async function listInAppNotifications(
   const limit = Math.max(1, Math.min(options?.limit ?? 30, 100));
   const offset = Math.max(0, options?.offset ?? 0);
 
-  const filters: SQL[] = [buildVisibilityFilter(userId, role)!];
+  const prefs = await getNotificationPreferencesForUser(userId);
+  const filters: SQL[] = [buildVisibilityFilter(userId, role, prefs.data)!];
 
   if (options?.type) {
     filters.push(eq(notifications.type, options.type));
@@ -559,7 +788,8 @@ export async function listInAppNotifications(
 }
 
 export async function getUnreadNotificationCount(userId: string, role?: UserRole) {
-  const visibility = buildVisibilityFilter(userId, role);
+  const prefs = await getNotificationPreferencesForUser(userId);
+  const visibility = buildVisibilityFilter(userId, role, prefs.data);
   const [row] = await db
     .select({
       count: sql<number>`count(*)::int`,
@@ -588,8 +818,12 @@ export async function markNotificationAsRead(
   userId: string,
   role?: UserRole,
 ) {
+  const prefs = await getNotificationPreferencesForUser(userId);
   const visible = await db.query.notifications.findFirst({
-    where: and(eq(notifications.id, notificationId), buildVisibilityFilter(userId, role)!),
+    where: and(
+      eq(notifications.id, notificationId),
+      buildVisibilityFilter(userId, role, prefs.data)!,
+    ),
     columns: { id: true },
   });
 
@@ -608,7 +842,8 @@ export async function markNotificationAsRead(
 }
 
 export async function markAllNotificationsAsRead(userId: string, role?: UserRole) {
-  const visibility = buildVisibilityFilter(userId, role);
+  const prefs = await getNotificationPreferencesForUser(userId);
+  const visibility = buildVisibilityFilter(userId, role, prefs.data);
   const visibleRows = await db
     .select({ id: notifications.id })
     .from(notifications)

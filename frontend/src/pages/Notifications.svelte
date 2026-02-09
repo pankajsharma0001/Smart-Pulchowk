@@ -15,7 +15,13 @@
   import { route } from "@mateothegreat/svelte5-router";
 
   const queryClient = useQueryClient();
+  const PAGE_SIZE = 5;
   let showUnreadOnly = $state(false);
+  let paginationOffset = $state(0);
+  let loadedNotifications = $state<InAppNotification[]>([]);
+  let totalNotifications = $state(0);
+  let isAppendingPage = $state(false);
+  let lastAppliedPageToken = $state<string | null>(null);
 
   function publishUnreadCount(count: number) {
     window.dispatchEvent(
@@ -25,20 +31,67 @@
     );
   }
 
+  function resetPagination() {
+    paginationOffset = 0;
+    loadedNotifications = [];
+    totalNotifications = 0;
+    isAppendingPage = false;
+    lastAppliedPageToken = null;
+  }
+
+  const canLoadMore = $derived(loadedNotifications.length < totalNotifications);
+
+  function toggleUnreadOnly() {
+    showUnreadOnly = !showUnreadOnly;
+    resetPagination();
+  }
+
+  function loadMoreNotifications() {
+    if (!canLoadMore || notificationsQuery.isFetching) return;
+    isAppendingPage = true;
+    paginationOffset = loadedNotifications.length;
+  }
+
   const notificationsQuery = createQuery(() => ({
-    queryKey: ["in-app-notifications", showUnreadOnly],
+    queryKey: ["in-app-notifications", showUnreadOnly, paginationOffset],
     queryFn: async () => {
       const result = await getInAppNotifications({
-        limit: 100,
+        limit: PAGE_SIZE,
+        offset: paginationOffset,
         unreadOnly: showUnreadOnly,
       });
       if (!result.success)
         throw new Error(result.message || "Failed to load notifications");
-      return result.data || [];
+      return {
+        items: result.data || [],
+        total: result.meta?.total ?? result.data?.length ?? 0,
+      };
     },
     staleTime: 10 * 1000,
     refetchInterval: 20 * 1000,
   }));
+
+  $effect(() => {
+    const page = notificationsQuery.data;
+    if (!page) return;
+    const pageToken = `${showUnreadOnly}:${paginationOffset}:${notificationsQuery.dataUpdatedAt}`;
+    if (lastAppliedPageToken === pageToken) return;
+    lastAppliedPageToken = pageToken;
+
+    if (paginationOffset === 0) {
+      loadedNotifications = page.items;
+    } else {
+      const existingIds = new Set(loadedNotifications.map((item) => item.id));
+      const merged = [...loadedNotifications];
+      for (const item of page.items) {
+        if (!existingIds.has(item.id)) merged.push(item);
+      }
+      loadedNotifications = merged;
+    }
+
+    totalNotifications = page.total;
+    isAppendingPage = false;
+  });
 
   const unreadCountQuery = createQuery(() => ({
     queryKey: ["notifications-unread-count"],
@@ -53,55 +106,25 @@
   const markReadMutation = createMutation(() => ({
     mutationFn: async (notificationId: number) =>
       markInAppNotificationRead(notificationId),
-    onMutate: async (notificationId: number) => {
+    onSuccess: (_result, notificationId) => {
+      loadedNotifications = loadedNotifications.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, isRead: true, readAt: new Date().toISOString() }
+          : notification,
+      );
+      if (showUnreadOnly) {
+        loadedNotifications = loadedNotifications.filter(
+          (notification) => notification.id !== notificationId,
+        );
+        totalNotifications = Math.max(0, totalNotifications - 1);
+      }
+
       const currentUnread =
         queryClient.getQueryData<number>(["notifications-unread-count"]) ?? 0;
       const nextUnread = Math.max(0, currentUnread - 1);
-      publishUnreadCount(nextUnread);
       queryClient.setQueryData(["notifications-unread-count"], nextUnread);
+      publishUnreadCount(nextUnread);
 
-      const previousNotificationQueries = queryClient.getQueriesData<
-        InAppNotification[]
-      >({
-        queryKey: ["in-app-notifications"],
-      });
-      for (const [key, data] of previousNotificationQueries) {
-        if (!data) continue;
-        const unreadOnlyCache =
-          Array.isArray(key) &&
-          key[0] === "in-app-notifications" &&
-          key[1] === true;
-        if (unreadOnlyCache) {
-          queryClient.setQueryData(
-            key,
-            data.filter((n) => n.id !== notificationId),
-          );
-          continue;
-        }
-        queryClient.setQueryData(
-          key,
-          data.map((n) =>
-            n.id === notificationId
-              ? { ...n, isRead: true, readAt: new Date().toISOString() }
-              : n,
-          ),
-        );
-      }
-
-      return { currentUnread, previousNotificationQueries };
-    },
-    onError: (_error, _notificationId, context) => {
-      if (!context) return;
-      queryClient.setQueryData(
-        ["notifications-unread-count"],
-        context.currentUnread,
-      );
-      publishUnreadCount(context.currentUnread);
-      for (const [key, data] of context.previousNotificationQueries) {
-        queryClient.setQueryData(key, data);
-      }
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["in-app-notifications"] });
       queryClient.invalidateQueries({
         queryKey: ["notifications-unread-count"],
@@ -111,62 +134,20 @@
 
   const markAllMutation = createMutation(() => ({
     mutationFn: async () => markAllInAppNotificationsRead(),
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["in-app-notifications"] });
-      await queryClient.cancelQueries({
-        queryKey: ["notifications-unread-count"],
-      });
-
-      const previousNotificationQueries = queryClient.getQueriesData<
-        InAppNotification[]
-      >({
-        queryKey: ["in-app-notifications"],
-      });
-      const previousUnreadCount = queryClient.getQueryData<number>([
-        "notifications-unread-count",
-      ]);
-
+    onSuccess: () => {
       const nowIso = new Date().toISOString();
-      for (const [key, data] of previousNotificationQueries) {
-        if (!data) continue;
-        const unreadOnlyCache =
-          Array.isArray(key) &&
-          key[0] === "in-app-notifications" &&
-          key[1] === true;
-        if (unreadOnlyCache) {
-          queryClient.setQueryData(key, [] as InAppNotification[]);
-          continue;
-        }
-        queryClient.setQueryData(
-          key,
-          data.map((notification) => ({
+      loadedNotifications = showUnreadOnly
+        ? []
+        : loadedNotifications.map((notification) => ({
             ...notification,
             isRead: true,
             readAt: notification.readAt || nowIso,
-          })),
-        );
-      }
+          }));
+      if (showUnreadOnly) totalNotifications = 0;
 
       queryClient.setQueryData(["notifications-unread-count"], 0);
       publishUnreadCount(0);
 
-      return {
-        previousNotificationQueries,
-        previousUnreadCount,
-      };
-    },
-    onError: (_error, _variables, context) => {
-      if (!context) return;
-      for (const [key, data] of context.previousNotificationQueries) {
-        queryClient.setQueryData(key, data);
-      }
-      queryClient.setQueryData(
-        ["notifications-unread-count"],
-        context.previousUnreadCount ?? 0,
-      );
-      publishUnreadCount(context.previousUnreadCount ?? 0);
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["in-app-notifications"] });
       queryClient.invalidateQueries({
         queryKey: ["notifications-unread-count"],
@@ -184,6 +165,17 @@
     const noticeId = Number(data.noticeId || 0);
 
     if (notification.type === "purchase_request") {
+      const params = new URLSearchParams();
+      params.set("tab", "listings");
+      if (listingId > 0) params.set("listingId", String(listingId));
+      if (requestId > 0) params.set("requestId", String(requestId));
+      return `/books/my-books?${params.toString()}`;
+    }
+
+    if (
+      notification.type === "purchase_request_cancelled" ||
+      notification.type === "purchase_request_removed"
+    ) {
       const params = new URLSearchParams();
       params.set("tab", "listings");
       if (listingId > 0) params.set("listingId", String(listingId));
@@ -210,6 +202,16 @@
       notification.type.includes("grading")
     )
       return "/classroom";
+    if (
+      notification.type === "role_changed" ||
+      notification.type === "security_alert"
+    )
+      return "/settings";
+    if (
+      notification.type === "admin_moderation_update" ||
+      notification.type === "system_announcement"
+    )
+      return "/dashboard";
     return "/dashboard";
   }
 
@@ -412,10 +414,16 @@
       };
     }
 
-    if (notification.type === "chat_message") {
+    if (
+      notification.type === "chat_message" ||
+      notification.type === "chat_mention"
+    ) {
       return {
         actor: actor || "Someone",
-        action: "sent you a message about",
+        action:
+          notification.type === "chat_mention"
+            ? "mentioned you in a message about"
+            : "sent you a message about",
         subject: listingTitle,
         suffix: ".",
       };
@@ -473,6 +481,54 @@
       };
     }
 
+    if (notification.type === "assignment_deadline") {
+      return {
+        actor,
+        action: "reminder for assignment:",
+        subject: assignmentTitle,
+        suffix: assignmentTitle ? "." : "",
+      };
+    }
+
+    if (notification.type === "event_registration_deadline") {
+      return {
+        actor,
+        action: "registration closes soon for event:",
+        subject: eventTitle,
+        suffix: eventTitle ? "." : "",
+      };
+    }
+
+    if (notification.type === "role_changed") {
+      return {
+        actor,
+        action: "updated your account role.",
+        subject: null,
+        suffix: "",
+      };
+    }
+
+    if (notification.type === "security_alert") {
+      return {
+        actor,
+        action: "recorded a new sign-in on your account.",
+        subject: null,
+        suffix: "",
+      };
+    }
+
+    if (
+      notification.type === "admin_moderation_update" ||
+      notification.type === "system_announcement"
+    ) {
+      return {
+        actor,
+        action: notification.body,
+        subject: null,
+        suffix: "",
+      };
+    }
+
     return null;
   }
 
@@ -485,12 +541,12 @@
       typeof data.iconKey === "string" ? data.iconKey.toLowerCase() : "";
     if (iconKey) return iconKey;
     const type = notification.type.toLowerCase();
+    if (type.includes("chat")) return "chat";
     if (type.includes("event")) return "event";
     if (
       type.includes("book") ||
       type.includes("purchase") ||
-      type.includes("request") ||
-      type.includes("chat")
+      type.includes("request")
     ) {
       return "book";
     }
@@ -513,7 +569,7 @@
       <div class="flex items-center gap-2">
         <button
           class="px-3 py-2 rounded-lg text-sm font-semibold border border-slate-200 bg-white hover:bg-slate-50"
-          onclick={() => (showUnreadOnly = !showUnreadOnly)}
+          onclick={toggleUnreadOnly}
         >
           {showUnreadOnly ? "Show All" : "Show Unread"}
         </button>
@@ -527,7 +583,7 @@
       </div>
     </div>
 
-    {#if notificationsQuery.isLoading}
+    {#if notificationsQuery.isLoading && loadedNotifications.length === 0}
       <div class="py-20">
         <LoadingSpinner text="Loading notifications..." />
       </div>
@@ -537,7 +593,7 @@
       >
         {(notificationsQuery.error as Error).message}
       </div>
-    {:else if (notificationsQuery.data || []).length === 0}
+    {:else if loadedNotifications.length === 0}
       <div
         class="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500"
       >
@@ -545,7 +601,7 @@
       </div>
     {:else}
       <div class="space-y-2">
-        {#each notificationsQuery.data || [] as notification (notification.id)}
+        {#each loadedNotifications as notification (notification.id)}
           {@const actorAvatarUrl = getActorAvatarUrl(notification)}
           {@const bookThumbUrl = getBookThumbUrl(notification)}
           {@const richText = getRichNotificationText(notification)}
@@ -602,6 +658,18 @@
                         class="w-6 h-6 object-contain"
                         loading="lazy"
                       />
+                    {:else if getIconKey(notification) === "chat"}
+                      <svg
+                        class="w-6 h-6"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                        ></path>
+                      </svg>
                     {:else if getIconKey(notification) === "notice"}
                       <svg
                         class="w-6 h-6"
@@ -693,6 +761,21 @@
             </div>
           </a>
         {/each}
+
+        {#if canLoadMore}
+          <div class="pt-2 flex justify-center">
+            <button
+              type="button"
+              onclick={loadMoreNotifications}
+              disabled={notificationsQuery.isFetching || isAppendingPage}
+              class="px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-60"
+            >
+              {notificationsQuery.isFetching || isAppendingPage
+                ? "Loading..."
+                : "Load more"}
+            </button>
+          </div>
+        {/if}
       </div>
     {/if}
   </div>

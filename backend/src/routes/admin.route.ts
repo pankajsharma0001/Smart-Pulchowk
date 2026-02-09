@@ -7,6 +7,7 @@ import {
   GetAdminRatings,
   GetAdminUsers,
   GetModerationReports,
+  PublishSystemAnnouncement,
   ToggleSellerVerification,
   UpdateAdminUserRole,
   UpdateModerationReport,
@@ -25,6 +26,7 @@ router.put("/reports/:reportId", UpdateModerationReport);
 router.get("/ratings", GetAdminRatings);
 router.get("/blocks", GetAdminBlocks);
 router.delete("/blocks/:blockId", AdminUnblockUser);
+router.post("/announcements", PublishSystemAnnouncement);
 
 export default router;
 

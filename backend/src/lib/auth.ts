@@ -8,6 +8,7 @@ import ENV from '../config/ENV.js'
 import { createAuthMiddleware } from 'better-auth/api'
 import { parseStudentEmail, determineUserRole } from './student-email-parser.js'
 import { createStudentProfileFromEmail } from '../services/classroom.service.js'
+import { sendToUser } from '../services/notification.service.js'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -77,6 +78,20 @@ export const auth = betterAuth({
           console.error('Failed to create student profile:', error)
         }
       }
+
+      const sessionMeta = (ctx.context.newSession as any)?.session
+      sendToUser(session.user.id, {
+        title: 'New sign-in detected',
+        body: 'Your account was signed in from a new session.',
+        data: {
+          type: 'security_alert',
+          iconKey: 'general',
+          ipAddress: sessionMeta?.ipAddress || '',
+          userAgent: sessionMeta?.userAgent || '',
+        },
+      }).catch((error) =>
+        console.error('Failed to send security alert notification:', error),
+      )
     }),
   },
 })

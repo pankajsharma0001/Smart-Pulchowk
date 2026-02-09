@@ -4,7 +4,10 @@ import {
   listInAppNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
+  getNotificationPreferencesForUser,
+  updateNotificationPreferencesForUser,
 } from "../services/inAppNotification.service.js";
+import { type NotificationPreferences } from "../lib/notification-preferences.js";
 
 function getAuth(req: Request) {
   const user = (req as any).user as { id: string; role?: string } | undefined;
@@ -60,3 +63,42 @@ export async function MarkAllNotificationsRead(req: Request, res: Response) {
   return res.json(result);
 }
 
+export async function GetNotificationPreferences(req: Request, res: Response) {
+  const { userId } = getAuth(req);
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const result = await getNotificationPreferencesForUser(userId);
+  return res.json(result);
+}
+
+export async function UpdateNotificationPreferences(req: Request, res: Response) {
+  const { userId } = getAuth(req);
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const body = (req.body ?? {}) as Partial<NotificationPreferences>;
+  const patch: Partial<NotificationPreferences> = {};
+
+  const keys: Array<keyof NotificationPreferences> = [
+    "eventReminders",
+    "marketplaceAlerts",
+    "noticeUpdates",
+    "classroomAlerts",
+    "chatAlerts",
+    "adminAlerts",
+  ];
+
+  for (const key of keys) {
+    const value = body[key];
+    if (value !== undefined && typeof value !== "boolean") {
+      return res
+        .status(400)
+        .json({ success: false, message: `Invalid value for ${key}. Expected boolean.` });
+    }
+    if (typeof value === "boolean") {
+      patch[key] = value;
+    }
+  }
+
+  const result = await updateNotificationPreferencesForUser(userId, patch);
+  return res.json(result);
+}

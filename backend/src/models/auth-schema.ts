@@ -1,5 +1,9 @@
-import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { pgTable, text, timestamp, boolean, index, jsonb } from "drizzle-orm/pg-core";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  type NotificationPreferences,
+} from "../lib/notification-preferences.js";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -15,6 +19,10 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   fcmToken: text("fcm_token"),
+  notificationPreferences: jsonb("notification_preferences")
+    .$type<NotificationPreferences>()
+    .default(sql`${JSON.stringify(DEFAULT_NOTIFICATION_PREFERENCES)}::jsonb`)
+    .notNull(),
 });
 
 export const session = pgTable(

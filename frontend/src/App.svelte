@@ -57,21 +57,21 @@
   let instance: RouterInstance = $state()!;
 
   function normalizePath(path: string) {
-    const clean = path.split("?")[0].split("#")[0];
+    const raw = (path || "").split("?")[0].split("#")[0];
+    const withLeadingSlash = raw.startsWith("/") ? raw : `/${raw}`;
+    const clean = withLeadingSlash || "/";
     if (clean.length > 1 && clean.endsWith("/")) return clean.slice(0, -1);
     return clean;
-  }
-
-  function tryNormalizePath(path?: string | null) {
-    if (!path) return null;
-    return normalizePath(path);
   }
 
   let activePath = $state("/");
 
   function syncActivePathFromWindow() {
     if (typeof window === "undefined") return;
-    activePath = normalizePath(window.location.pathname);
+    const nextPath = normalizePath(window.location.pathname);
+    if (nextPath !== activePath) {
+      activePath = nextPath;
+    }
   }
 
   onMount(() => {
@@ -104,14 +104,6 @@
       );
   });
 
-  $effect(() => {
-    const routerPath = tryNormalizePath(
-      instance?.current?.result?.path?.original,
-    );
-    if (routerPath && routerPath !== activePath) {
-      activePath = routerPath;
-    }
-  });
 
   const currentPath = $derived(activePath);
 
@@ -119,23 +111,30 @@
 
   const session = authClient.useSession();
   let navUserCache = $state<any | null>(null);
+  let navUserCacheId = $state<string | null>(null);
   let navAuthResolved = $state(false);
 
   $effect(() => {
     const liveUser = ($session.data?.user as any) ?? null;
 
-    if (!$session.isPending) {
+    if (!$session.isPending && !navAuthResolved) {
       navAuthResolved = true;
     }
 
     if (liveUser) {
-      navUserCache = liveUser;
+      const liveUserId =
+        typeof liveUser?.id === "string" ? (liveUser.id as string) : null;
+      if (liveUserId !== navUserCacheId) {
+        navUserCache = liveUser;
+        navUserCacheId = liveUserId;
+      }
       return;
     }
 
     // Clear cache only after initial auth has resolved and session settles as signed-out.
-    if (navAuthResolved && !$session.isPending) {
+    if (navAuthResolved && !$session.isPending && navUserCacheId !== null) {
       navUserCache = null;
+      navUserCacheId = null;
     }
   });
 
@@ -144,6 +143,7 @@
   const currentRole = $derived((navUser as any)?.role as string | undefined);
   const isGuestRole = $derived(currentRole === "guest");
   const isNoticeManagerRole = $derived(currentRole === "notice_manager");
+  let redirectInFlight = $state<string | null>(null);
 
   let unreadNotificationsCount = $state(0);
   let unreadNotificationsPoller: ReturnType<typeof setInterval> | null = null;
@@ -229,8 +229,6 @@
       return false;
     if (normalized === "/admin" || normalized.startsWith("/admin/"))
       return false;
-    if (normalized === "/settings" || normalized.startsWith("/settings/"))
-      return false;
     if (normalized === "/create-club" || normalized.startsWith("/create-club/"))
       return false;
     if (/^\/clubs\/\d+\/events\/create(?:\/|$)/.test(normalized)) return false;
@@ -249,8 +247,6 @@
       return false;
     if (normalized === "/admin" || normalized.startsWith("/admin/"))
       return false;
-    if (normalized === "/settings" || normalized.startsWith("/settings/"))
-      return false;
     if (normalized === "/create-club" || normalized.startsWith("/create-club/"))
       return false;
     if (/^\/clubs\/\d+\/events\/create(?:\/|$)/.test(normalized)) return false;
@@ -258,15 +254,37 @@
   }
 
   $effect(() => {
+    const normalizedCurrent = normalizePath(currentPath || "/");
+
+    if (redirectInFlight && normalizedCurrent === redirectInFlight) {
+      redirectInFlight = null;
+    }
+
     if (!isGuestRole) return;
-    if (isGuestAllowedPath(currentPath || "/")) return;
-    goto("/");
+    if (isGuestAllowedPath(normalizedCurrent)) return;
+
+    const target = "/";
+    if (normalizedCurrent === target || redirectInFlight === target) return;
+
+    redirectInFlight = target;
+    goto(target);
   });
 
   $effect(() => {
+    const normalizedCurrent = normalizePath(currentPath || "/");
+
+    if (redirectInFlight && normalizedCurrent === redirectInFlight) {
+      redirectInFlight = null;
+    }
+
     if (!isNoticeManagerRole) return;
-    if (isNoticeManagerAllowedPath(currentPath || "/")) return;
-    goto("/notices");
+    if (isNoticeManagerAllowedPath(normalizedCurrent)) return;
+
+    const target = "/notices";
+    if (normalizedCurrent === target || redirectInFlight === target) return;
+
+    redirectInFlight = target;
+    goto(target);
   });
 
   const routes: RouteConfig[] = [

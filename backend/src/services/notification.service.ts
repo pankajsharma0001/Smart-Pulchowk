@@ -9,6 +9,7 @@ import {
   createInAppNotificationForAudience,
   createInAppNotificationForUser,
 } from "./inAppNotification.service.js";
+import { normalizeNotificationPreferences } from "../lib/notification-preferences.js";
 
 let isFirebaseInitialized = false;
 
@@ -61,6 +62,45 @@ interface NotificationPayload {
   title?: string;
   body?: string;
   data?: Record<string, string>;
+}
+
+function isTypeAllowedByPreferences(
+  type: string,
+  preferences: ReturnType<typeof normalizeNotificationPreferences>,
+  iconKey?: string,
+) {
+  const lower = type.toLowerCase();
+  const icon = (iconKey || "").toLowerCase();
+
+  const isEventType = lower.startsWith("event_") || lower === "new_event";
+  const isNoticeType = lower.startsWith("notice_");
+  const isMarketplaceType =
+    lower === "book_listed" ||
+    lower === "new_book" ||
+    lower === "purchase_request" ||
+    lower === "request_response" ||
+    lower === "purchase_request_cancelled" ||
+    lower === "purchase_request_removed" ||
+    icon === "book";
+  const isClassroomType =
+    lower === "new_assignment" ||
+    lower === "grading_update" ||
+    lower === "assignment_deadline" ||
+    icon === "classroom";
+  const isChatType = lower === "chat_message" || lower === "chat_mention";
+  const isAdminType =
+    lower.startsWith("admin_") ||
+    lower === "role_changed" ||
+    lower === "security_alert" ||
+    lower === "system_announcement";
+
+  if (isEventType && !preferences.eventReminders) return false;
+  if (isNoticeType && !preferences.noticeUpdates) return false;
+  if (isMarketplaceType && !preferences.marketplaceAlerts) return false;
+  if (isClassroomType && !preferences.classroomAlerts) return false;
+  if (isChatType && !preferences.chatAlerts) return false;
+  if (isAdminType && !preferences.adminAlerts) return false;
+  return true;
 }
 
 export const sendToTopic = async (
@@ -136,29 +176,45 @@ export const sendToUser = async (
   userId: string,
   payload: NotificationPayload,
 ) => {
-  if (payload.title && payload.body) {
-    createInAppNotificationForUser({
-      userId,
-      type: payload.data?.type || "user_notification",
-      title: payload.title,
-      body: payload.body,
-      data: payload.data,
-    }).catch((error) =>
-      console.error("Failed to create in-app user notification:", error),
-    );
-  }
-
-  if (!isFirebaseInitialized) {
-    console.warn("Cannot send notification: Firebase not initialized.");
-    return;
-  }
-
   try {
+    const notificationType = payload.data?.type || "user_notification";
+
     // Fetch user's FCM token from DB
     const userData = await db.query.user.findFirst({
       where: eq(user.id, userId),
-      columns: { fcmToken: true },
+      columns: { fcmToken: true, notificationPreferences: true },
     });
+
+    const preferences = normalizeNotificationPreferences(
+      userData?.notificationPreferences,
+    );
+
+    if (
+      !isTypeAllowedByPreferences(
+        notificationType,
+        preferences,
+        payload.data?.iconKey,
+      )
+    ) {
+      return;
+    }
+
+    if (payload.title && payload.body) {
+      createInAppNotificationForUser({
+        userId,
+        type: notificationType,
+        title: payload.title,
+        body: payload.body,
+        data: payload.data,
+      }).catch((error) =>
+        console.error("Failed to create in-app user notification:", error),
+      );
+    }
+
+    if (!isFirebaseInitialized) {
+      console.warn("Cannot send notification: Firebase not initialized.");
+      return;
+    }
 
     if (!userData?.fcmToken) {
       console.warn(

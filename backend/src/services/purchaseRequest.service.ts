@@ -313,6 +313,33 @@ export const cancelPurchaseRequest = async (requestId: number, buyerId: string) 
 
         await db.delete(bookPurchaseRequests).where(eq(bookPurchaseRequests.id, requestId));
 
+        const listing = await db.query.bookListings.findFirst({
+            where: eq(bookListings.id, request.listingId),
+            with: { images: { limit: 1 } },
+        });
+        const buyer = await db.query.user.findFirst({
+            where: eq(user.id, buyerId),
+            columns: { name: true, image: true },
+        });
+
+        if (listing) {
+            sendToUser(listing.sellerId, {
+                title: "Purchase request cancelled",
+                body: `${buyer?.name || "A buyer"} cancelled a request for "${listing.title}".`,
+                data: {
+                    type: "purchase_request_cancelled",
+                    requestId: requestId.toString(),
+                    listingId: listing.id.toString(),
+                    buyerId,
+                    actorName: buyer?.name || "Buyer",
+                    ...(buyer?.image ? { actorAvatarUrl: buyer.image } : {}),
+                    listingTitle: listing.title,
+                    iconKey: "book",
+                    ...(listing.images?.[0]?.imageUrl ? { thumbnailUrl: listing.images[0].imageUrl } : {}),
+                },
+            }).catch((err) => console.error("Failed to notify seller of request cancellation:", err));
+        }
+
         return { success: true, message: "Request cancelled." };
     } catch (error) {
         console.error("Error cancelling purchase request:", error);
@@ -346,6 +373,20 @@ export const deletePurchaseRequest = async (requestId: number, userId: string) =
         // Remove the restriction that only pending requests can be cancelled/deleted
         // to allow users to clear their history.
         await db.delete(bookPurchaseRequests).where(eq(bookPurchaseRequests.id, requestId));
+
+        const counterpartId = request.buyerId === userId ? listing.sellerId : request.buyerId;
+        if (counterpartId) {
+            sendToUser(counterpartId, {
+                title: "Purchase request removed",
+                body: `A purchase request for "${listing.title}" was removed.`,
+                data: {
+                    type: "purchase_request_removed",
+                    requestId: requestId.toString(),
+                    listingId: listing.id.toString(),
+                    iconKey: "book",
+                },
+            }).catch((err) => console.error("Failed to notify counterpart of request removal:", err));
+        }
 
         return { success: true, message: "Request deleted." };
     } catch (error) {

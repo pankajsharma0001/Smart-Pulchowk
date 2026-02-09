@@ -2307,6 +2307,15 @@ export interface InAppNotificationListResponse {
   message?: string
 }
 
+export interface NotificationPreferences {
+  eventReminders: boolean
+  marketplaceAlerts: boolean
+  noticeUpdates: boolean
+  classroomAlerts: boolean
+  chatAlerts: boolean
+  adminAlerts: boolean
+}
+
 export async function getInAppNotifications(filters?: {
   limit?: number
   offset?: number
@@ -2370,6 +2379,37 @@ export async function markAllInAppNotificationsRead(): Promise<{
     const res = await fetch(`${API_NOTIFICATIONS}/mark-all-read`, {
       method: 'POST',
       credentials: 'include',
+    })
+    return await res.json()
+  } catch (error: any) {
+    return { success: false, message: error.message }
+  }
+}
+
+export async function getNotificationPreferences(): Promise<{
+  success: boolean
+  data?: NotificationPreferences
+  message?: string
+}> {
+  try {
+    const res = await fetch(`${API_NOTIFICATIONS}/preferences`, {
+      credentials: 'include',
+    })
+    return await res.json()
+  } catch (error: any) {
+    return { success: false, message: error.message }
+  }
+}
+
+export async function updateNotificationPreferences(
+  patch: Partial<NotificationPreferences>,
+): Promise<{ success: boolean; data?: NotificationPreferences; message?: string }> {
+  try {
+    const res = await fetch(`${API_NOTIFICATIONS}/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(patch),
     })
     return await res.json()
   } catch (error: any) {

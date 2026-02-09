@@ -6,6 +6,7 @@ import {
   listAllRatingsForAdmin,
   listUsersForAdmin,
   setSellerVerificationByAdmin,
+  publishSystemAnnouncement,
   unblockUserByAdmin,
   updateModerationReport,
   updateUserRoleByAdmin,
@@ -178,5 +179,38 @@ export const AdminUnblockUser = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error in AdminUnblockUser controller:", error);
     return res.status(500).json({ success: false, message: "Failed to unblock user." });
+  }
+};
+
+export const PublishSystemAnnouncement = async (req: Request, res: Response) => {
+  try {
+    const actorId = getAdminId(req);
+    if (!actorId) {
+      return res.status(401).json({ success: false, message: "Authentication required." });
+    }
+
+    const title = String(req.body?.title ?? "").trim();
+    const body = String(req.body?.body ?? "").trim();
+    const audience = req.body?.audience as "all" | "students" | "teachers" | "admins" | undefined;
+
+    if (!title || !body) {
+      return res.status(400).json({ success: false, message: "title and body are required." });
+    }
+
+    const result = await publishSystemAnnouncement({
+      title,
+      body,
+      audience,
+      actorId,
+    });
+
+    if (!result.success) return res.status(400).json(result);
+    return res.json(result);
+  } catch (error) {
+    console.error("Error in PublishSystemAnnouncement controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to publish announcement.",
+    });
   }
 };

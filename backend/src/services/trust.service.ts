@@ -6,6 +6,7 @@ import {
   sellerRatings,
   userBlocks,
 } from "../models/trust-schema.js";
+import { sendToUser } from "./notification.service.js";
 
 const REPORT_CATEGORIES = [
   "spam",
@@ -413,6 +414,19 @@ export async function reviewMarketplaceReport(input: {
   if (!updated) {
     return { success: false, message: "Report not found." };
   }
+
+  sendToUser(updated.reporterId, {
+    title: "Moderation update",
+    body: `Your marketplace report is now marked as ${status.replace("_", " ")}.`,
+    data: {
+      type: "admin_moderation_update",
+      reportId: updated.id.toString(),
+      status,
+      iconKey: "general",
+    },
+  }).catch((error) =>
+    console.error("Failed to notify reporter about moderation update:", error),
+  );
 
   return {
     success: true,

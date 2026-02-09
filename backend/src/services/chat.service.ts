@@ -5,6 +5,11 @@ import { bookListings, bookPurchaseRequests } from "../models/book_buy_sell-sche
 import { eq, and, or, desc, lt } from "drizzle-orm";
 import { sendToUser } from "./notification.service.js";
 import { isUserBlockedBetween } from "./trust.service.js";
+import { hasUnreadNotificationOfTypes } from "./inAppNotification.service.js";
+
+function hasMention(content: string) {
+    return /(^|\s)@\w+/i.test(content);
+}
 
 export const sendMessage = async (senderId: string, listingId: number, content: string, buyerId?: string) => {
     try {
@@ -95,21 +100,33 @@ export const sendMessage = async (senderId: string, listingId: number, content: 
         const recipientId = senderId === sellerId ? conversation.buyerId : sellerId;
         const sender = await db.query.user.findFirst({ where: eq(user.id, senderId) });
 
+        const messageType = hasMention(content) ? "chat_mention" : "chat_message";
+        const shouldBatch =
+            messageType === "chat_message" &&
+            (await hasUnreadNotificationOfTypes({
+                userId: recipientId,
+                types: ["chat_message", "chat_mention"],
+                since: new Date(Date.now() - 10 * 60 * 1000),
+                conversationId: conversation.id,
+            }));
+
         // 6. Send FCM push notification (WebSocket events removed)
-        sendToUser(recipientId, {
+        if (!shouldBatch) {
+            sendToUser(recipientId, {
             title: sender?.name || "New Message",
             body: content,
             data: {
-                type: 'chat_message',
+                type: messageType,
                 conversationId: conversation.id.toString(),
                 listingId: listing.id.toString(),
                 senderId,
                 senderName: sender?.name || "Someone",
                 content: content,
-                iconKey: 'book',
+                iconKey: 'chat',
                 ...(listing.images?.[0]?.imageUrl ? { thumbnailUrl: listing.images[0].imageUrl } : {}),
             }
-        });
+            });
+        }
 
         return { success: true, data: newMessage };
     } catch (error) {
@@ -293,20 +310,32 @@ export const sendMessageToConversation = async (conversationId: number, senderId
         const recipientId = senderId === conversation.buyerId ? conversation.sellerId : conversation.buyerId;
         const sender = await db.query.user.findFirst({ where: eq(user.id, senderId) });
 
-        sendToUser(recipientId, {
+        const messageType = hasMention(content) ? "chat_mention" : "chat_message";
+        const shouldBatch =
+            messageType === "chat_message" &&
+            (await hasUnreadNotificationOfTypes({
+                userId: recipientId,
+                types: ["chat_message", "chat_mention"],
+                since: new Date(Date.now() - 10 * 60 * 1000),
+                conversationId,
+            }));
+
+        if (!shouldBatch) {
+            sendToUser(recipientId, {
             title: sender?.name || "New Message",
             body: content,
             data: {
-                type: 'chat_message',
+                type: messageType,
                 conversationId: conversationId.toString(),
                 listingId: conversation.listingId.toString(),
                 senderId,
                 senderName: sender?.name || "Someone",
                 content: content,
-                iconKey: 'book',
+                iconKey: 'chat',
                 ...(listing?.images?.[0]?.imageUrl ? { thumbnailUrl: listing.images[0].imageUrl } : {}),
             }
-        });
+            });
+        }
 
         return { success: true, data: newMessage };
     } catch (error) {

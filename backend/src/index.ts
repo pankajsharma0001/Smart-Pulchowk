@@ -3,8 +3,10 @@ import express from 'express'
 import path from 'path'
 import { createServer } from 'http'
 import compression from 'compression'
+import { sql } from 'drizzle-orm'
 import { auth } from './lib/auth.js'
 import ENV from './config/ENV.js'
+import { db } from './lib/db.js'
 import eventRoutes from './routes/events.route.js'
 import clubProfileRoutes from './routes/clubProfile.route.js'
 import chatBotRoutes from './routes/chatBot.route.js'
@@ -16,6 +18,7 @@ import noticeRoutes from './routes/notice.route.js'
 import adminRoutes from './routes/admin.route.js'
 import searchRoutes from './routes/search.route.js'
 import notificationsRoutes from './routes/notifications.route.js'
+import { startNotificationReminderJobs } from './services/notification-jobs.service.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -65,6 +68,50 @@ app.get('/{*splat}', async (_, res) => {
   res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'))
 })
 
-if (ENV.MODE === "DEV") httpServer.listen(3000, () => console.log(`Server is running on port 3000 in ${ENV.MODE} mode`))
+async function ensureRuntimeSchema() {
+  await db.execute(sql`
+    ALTER TABLE "user"
+    ADD COLUMN IF NOT EXISTS "notification_preferences" jsonb
+    DEFAULT '{"eventReminders":true,"marketplaceAlerts":true,"noticeUpdates":true,"classroomAlerts":true,"chatAlerts":true,"adminAlerts":true}'::jsonb
+    NOT NULL
+  `)
+  await db.execute(sql`
+    ALTER TABLE "user"
+    ALTER COLUMN "notification_preferences"
+    SET DEFAULT '{"eventReminders":true,"marketplaceAlerts":true,"noticeUpdates":true,"classroomAlerts":true,"chatAlerts":true,"adminAlerts":true}'::jsonb
+  `)
+  await db.execute(sql`
+    UPDATE "user"
+    SET "notification_preferences" = coalesce("notification_preferences", '{}'::jsonb)
+      - 'inApp'
+      - 'emailDigest'
+      - 'soundEffects'
+      || '{"classroomAlerts":true,"chatAlerts":true,"adminAlerts":true}'::jsonb
+    WHERE "notification_preferences" ? 'inApp'
+       OR "notification_preferences" ? 'emailDigest'
+       OR "notification_preferences" ? 'soundEffects'
+       OR NOT ("notification_preferences" ? 'classroomAlerts')
+       OR NOT ("notification_preferences" ? 'chatAlerts')
+       OR NOT ("notification_preferences" ? 'adminAlerts')
+  `)
+}
+
+async function startServer() {
+  try {
+    await ensureRuntimeSchema()
+  } catch (error) {
+    console.error('Failed to apply runtime schema checks:', error)
+  }
+
+  if (ENV.MODE === "DEV") {
+    httpServer.listen(3000, () =>
+      console.log(`Server is running on port 3000 in ${ENV.MODE} mode`),
+    )
+  }
+
+  startNotificationReminderJobs()
+}
+
+void startServer()
 
 export default app
