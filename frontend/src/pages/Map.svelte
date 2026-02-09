@@ -1245,10 +1245,12 @@
 
   let currentQuery = $state("");
   let queryToExecute = $state("");
+  let chatRequestNonce = $state(0);
   let messages = $state<ChatMessage[]>([]);
 
   const chatQuery = createQuery(() => ({
-    queryKey: ["chatbot", queryToExecute],
+    // Include a nonce so repeated identical queries always fetch fresh data
+    queryKey: ["chatbot", queryToExecute, chatRequestNonce],
     queryFn: async () => {
       const res = await chatBot(queryToExecute);
       if (!res.success || !res.data) {
@@ -1423,6 +1425,7 @@
       },
     ];
 
+    chatRequestNonce += 1;
     queryToExecute = submittedQuery;
     currentQuery = "";
   }
@@ -1563,7 +1566,7 @@
                   </div>
                 {/if}
 
-                <p>{message.content}</p>
+                <p class="whitespace-pre-line break-words">{message.content}</p>
 
                 {#if message.role === "assistant" && message.locations && message.locations.length > 0}
                   <div class="mt-2 flex flex-wrap gap-1.5">
@@ -1594,11 +1597,6 @@
                   </p>
                 {/if}
 
-                {#if message.role === "assistant" && message.sources && message.sources.length > 0}
-                  <p class="mt-1 text-[10px] text-slate-400">
-                    Source: {message.sources[0]}
-                  </p>
-                {/if}
               </div>
             </div>
           {/each}

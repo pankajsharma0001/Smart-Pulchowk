@@ -436,9 +436,9 @@ function makeSupportResponse(entry: StudentSupportEntry): ConciergeResponsePaylo
 
 function isRouteQuery(query: string): boolean {
   const normalized = normalize(query);
+  if (extractRouteEndpoints(query)) return true;
+
   return (
-    (normalized.includes("from ") && normalized.includes(" to ")) ||
-    (normalized.includes("between ") && normalized.includes(" and ")) ||
     includesAny(normalized, [
       "show route",
       "directions",
@@ -464,6 +464,34 @@ function extractRouteEndpoints(query: string): { start: string; end: string } | 
       start: betweenAnd[1].trim(),
       end: betweenAnd[2].trim(),
     };
+  }
+
+  // Support terse route queries such as: "dean office to om stationery store"
+  const plainTo = raw.match(/^(.+?)\s+\bto\s+(.+)$/i);
+  if (plainTo) {
+    const start = plainTo[1].trim();
+    const end = plainTo[2].trim();
+    const invalidPlainStart = new Set([
+      "how",
+      "what",
+      "where",
+      "when",
+      "why",
+      "who",
+      "go",
+      "walk",
+      "move",
+      "head",
+      "get",
+      "take",
+      "need",
+      "want",
+      "trying",
+    ]);
+
+    if (!invalidPlainStart.has(start) && start.length > 2 && end.length > 2) {
+      return { start, end };
+    }
   }
 
   return null;
@@ -574,7 +602,11 @@ function buildFallbackResponse(
   query: string,
 ): ConciergeResponsePayload {
   const fallbackKey =
-    intent === "deadline_query" || intent === "escalation" ? intent : "general";
+    intent === "deadline_query" ||
+    intent === "escalation" ||
+    intent === "policy_query"
+      ? intent
+      : "general";
   const fallback = KB.fallbacks[fallbackKey] ?? KB.fallbacks.general;
   const locationIds = fallback.location_ids?.length
     ? fallback.location_ids

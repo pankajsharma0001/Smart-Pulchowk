@@ -145,6 +145,60 @@
       ]
     },
     {
+      "id": "first_semester_fee_query",
+      "intent": "policy_query",
+      "category": "registration_and_records",
+      "question_patterns": [
+        "what is the fee for first semester",
+        "first semester tuition fee",
+        "how much is first semester fee",
+        "tuition fee for first semester",
+        "semester fee details"
+      ],
+      "keywords": [
+        "fee",
+        "tuition",
+        "first semester",
+        "payment",
+        "receipt",
+        "admission fee"
+      ],
+      "answer": "The current fee sheet snapshot does not list first-semester fees; it starts from higher semesters. Please confirm first-semester fee details at Dean Office before payment.",
+      "location_ids": ["dean-office"],
+      "source_type": "office_confirmed",
+      "last_verified_at": "2026-02-09",
+      "follow_up": [
+        "Ask for a written fee breakdown and payment deadline to avoid mismatch."
+      ]
+    },
+    {
+      "id": "semester_fee_structure_snapshot",
+      "intent": "policy_query",
+      "category": "registration_and_records",
+      "question_patterns": [
+        "fee structure",
+        "semester fee structure",
+        "tuition structure",
+        "show fee chart",
+        "program fee table"
+      ],
+      "keywords": [
+        "fee structure",
+        "semester fee",
+        "regular fee",
+        "full fee",
+        "foreign fee",
+        "tuition chart"
+      ],
+      "answer": "Latest shared fee snapshot (Regular / Full / Foreign):\n- MSc 2080 (4th): Rs 16,982 / 62,800\n- MSc 2081 (2nd): Rs 18,069 / 67,094\n- B.Arch 2077 (10th): Rs 4,699 / 35,073 / 107,736\n- BE 2078 (8th): Rs 4,699 / 35,073\n- BE-B.Arch 2079 (6th): Rs 4,699 / 35,073 / 107,736\n- BE-B.Arch 2080 (5th): Rs 6,490 / 44,200 / 122,450\n- Aerospace-Chemical 2078-079 (6th & 8th): Rs 7,699 / 64,073\n- BE-B.Arch 2081 (3rd): Rs 6,825 / 47,050 / 130,325\n- Power Elec & Drive Eng 2080 (4th): Rs 41,982 / 87,800\n- Power Elec & Drive Eng 2081 (2nd): Rs 43,069 / 92,094\nPlease verify latest revisions at Dean Office before payment.",
+      "location_ids": ["dean-office"],
+      "source_type": "office_confirmed",
+      "last_verified_at": "2026-02-09",
+      "follow_up": [
+        "Ask Dean Office for the latest signed fee notice if you are paying today."
+      ]
+    },
+    {
       "id": "exam_form_and_admit_card",
       "intent": "process_howto",
       "category": "registration_and_records",
@@ -786,6 +840,13 @@
       "location_ids": ["dean-office"],
       "follow_up": [
         "You can ask me route questions like 'from Pulchowk Library to Exam Control Office'."
+      ]
+    },
+    "policy_query": {
+      "message": "For fee and policy details, please verify the latest official instructions with the responsible office before acting.",
+      "location_ids": ["dean-office", "exam-control-office"],
+      "follow_up": [
+        "Carry your student details and request the latest written policy or fee sheet."
       ]
     },
     "deadline_query": {
