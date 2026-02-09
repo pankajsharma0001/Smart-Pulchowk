@@ -31,6 +31,20 @@
 
   let busyUserId = $state<string | null>(null)
   let busyReportId = $state<number | null>(null)
+  let roleUpdateUserId = $state<string | null>(null)
+  let roleStatusByUserId = $state<
+    Record<string, { type: 'success' | 'error'; message: string }>
+  >({})
+
+  function setRoleStatus(
+    userId: string,
+    status: { type: 'success' | 'error'; message: string } | null,
+  ) {
+    const next = { ...roleStatusByUserId }
+    if (!status) delete next[userId]
+    else next[userId] = status
+    roleStatusByUserId = next
+  }
 
   const overviewQuery = createQuery(() => ({
     queryKey: ['admin-overview'],
@@ -70,14 +84,28 @@
   }))
 
   async function handleRoleUpdate(user: AdminUser, role: string) {
+    if (role === user.role) return
     busyUserId = user.id
+    roleUpdateUserId = user.id
+    setRoleStatus(user.id, null)
+
     const result = await updateAdminUserRole(user.id, role)
+
     busyUserId = null
+    roleUpdateUserId = null
     if (result.success) {
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] })
       await queryClient.invalidateQueries({ queryKey: ['admin-overview'] })
+      setRoleStatus(user.id, {
+        type: 'success',
+        message: `Role updated to ${role}.`,
+      })
+      setTimeout(() => setRoleStatus(user.id, null), 3000)
     } else {
-      alert(result.message || 'Failed to update role')
+      setRoleStatus(user.id, {
+        type: 'error',
+        message: result.message || 'Failed to update role.',
+      })
     }
   }
 
@@ -433,21 +461,37 @@
                               </div>
                             </td>
                             <td class="px-4 py-3">
-                              <select
-                                value={user.role}
-                                disabled={busyUserId === user.id}
-                                onchange={(e) =>
-                                  handleRoleUpdate(
-                                    user,
-                                    (e.currentTarget as HTMLSelectElement)
-                                      .value,
-                                  )}
-                                class="text-[10px] font-bold uppercase tracking-wider bg-slate-100 border-none rounded py-1 pl-2 pr-6 focus:ring-2 focus:ring-violet-500"
-                              >
-                                {#each roleOptions as role}
-                                  <option value={role}>{role}</option>
-                                {/each}
-                              </select>
+                              <div class="flex flex-col gap-1">
+                                <select
+                                  value={user.role}
+                                  disabled={busyUserId === user.id}
+                                  onchange={(e) =>
+                                    handleRoleUpdate(
+                                      user,
+                                      (e.currentTarget as HTMLSelectElement)
+                                        .value,
+                                    )}
+                                  class="text-[10px] font-bold uppercase tracking-wider bg-slate-100 border-none rounded py-1 pl-2 pr-6 focus:ring-2 focus:ring-violet-500"
+                                >
+                                  {#each roleOptions as role}
+                                    <option value={role}>{role}</option>
+                                  {/each}
+                                </select>
+                                {#if roleUpdateUserId === user.id}
+                                  <span class="text-[10px] text-slate-500"
+                                    >Updating role...</span
+                                  >
+                                {:else if roleStatusByUserId[user.id]}
+                                  <span
+                                    class="text-[10px] {roleStatusByUserId[user.id].type ===
+                                    'success'
+                                      ? 'text-emerald-600'
+                                      : 'text-rose-600'}"
+                                  >
+                                    {roleStatusByUserId[user.id].message}
+                                  </span>
+                                {/if}
+                              </div>
                             </td>
                             <td class="px-4 py-3">
                               {#if user.isVerifiedSeller}

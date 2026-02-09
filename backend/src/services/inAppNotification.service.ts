@@ -432,6 +432,30 @@ export async function createInAppNotificationForAudience(input: {
   return created;
 }
 
+export async function deleteNoticeNotificationsByNoticeId(input: {
+  noticeId: number;
+  types?: string[];
+}) {
+  const types =
+    input.types && input.types.length > 0
+      ? input.types
+      : ["notice_created", "notice_updated"];
+
+  const deletedRows = await db
+    .delete(notifications)
+    .where(
+      and(
+        inArray(notifications.type, types),
+        sql`coalesce(${notifications.data}->>'noticeId', '') = ${String(
+          input.noticeId,
+        )}`,
+      ),
+    )
+    .returning({ id: notifications.id });
+
+  return { success: true, deleted: deletedRows.length };
+}
+
 export async function listInAppNotifications(
   userId: string,
   role?: UserRole,

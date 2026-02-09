@@ -5,7 +5,10 @@ import { notice, type NewNotice } from '../models/notice-schema.js'
 import { user } from '../models/auth-schema.js'
 import { UPLOAD_CONSTANTS, generatePublicId } from '../config/cloudinary.js'
 import { uploadAssignmentFileToCloudinary } from '../services/cloudinary.service.js'
-import { createInAppNotificationForAudience } from '../services/inAppNotification.service.js'
+import {
+  createInAppNotificationForAudience,
+  deleteNoticeNotificationsByNoticeId,
+} from '../services/inAppNotification.service.js'
 import { sendToTopic } from '../services/notification.service.js'
 
 type AuthedRequest = Request & { user?: { id: string; role?: string | null } }
@@ -429,8 +432,13 @@ export async function deleteNotice(req: AuthedRequest, res: Response) {
         .json({ success: false, message: 'Notice not found' })
     }
 
+    await deleteNoticeNotificationsByNoticeId({
+      noticeId: deleted.id,
+      types: ['notice_created', 'notice_updated'],
+    })
+
     createInAppNotificationForAudience({
-      audience: 'all',
+      audience: 'admins',
       type: 'notice_deleted',
       title: 'Notice Removed',
       body: deleted.title,
@@ -448,20 +456,6 @@ export async function deleteNotice(req: AuthedRequest, res: Response) {
     }).catch((error) =>
       console.error('Failed to create notice delete notification:', error),
     )
-
-    // Send FCM push notification to 'announcements' topic
-    sendToTopic('announcements', {
-      title: 'Notice Removed',
-      body: deleted.title,
-      data: {
-        noticeId: deleted.id.toString(),
-        type: 'notice_deleted',
-        section: deleted.section,
-        subsection: deleted.subsection,
-        publisherId: req.user.id,
-        iconKey: 'notice',
-      },
-    }).catch((error) => console.error('Failed to send notice delete FCM topic notification:', error))
 
     return res.json({
       success: true,
