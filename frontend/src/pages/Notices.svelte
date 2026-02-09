@@ -18,6 +18,7 @@
     type NoticeWritePayload,
   } from "../lib/api";
   import { createQuery, useQueryClient } from "@tanstack/svelte-query";
+  import { optimizeCloudinaryUrl } from "../lib/api-client";
 
   const { route } = $props();
   const session = authClient.useSession();
@@ -1015,7 +1016,7 @@
                             </div>
                           {/if}
                           <img
-                            src={notice.attachmentUrl}
+                            src={optimizeCloudinaryUrl(notice.attachmentUrl, 800)}
                             alt={notice.title}
                             class="max-h-64 mx-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity {imagesLoaded[
                               notice.id
@@ -1142,7 +1143,7 @@
         </svg>
       </button>
       <img
-        src={previewImage}
+        src={optimizeCloudinaryUrl(previewImage, 1600)}
         alt={previewTitle}
         class="max-h-[80vh] mx-auto rounded-lg"
       />
