@@ -316,7 +316,7 @@ function getRoleTypeFilter(role?: UserRole): SQL | null {
 function buildVisibilityFilter(userId: string, role?: UserRole) {
   const roleTypeFilter = getRoleTypeFilter(role);
 
-  const baseFilter = and(
+  const baseFilters: SQL[] = [
     or(
       eq(notifications.recipientId, userId),
       inArray(notifications.audience, getVisibleAudiencesForRole(role)),
@@ -358,7 +358,24 @@ function buildVisibilityFilter(userId: string, role?: UserRole) {
         )
       )
     )`,
-  );
+    // Hide stale publish/update notifications if the notice no longer exists.
+    sql`not (
+      ${notifications.type} in ('notice_created', 'notice_updated')
+      and (${notifications.data}->>'noticeId') ~ '^[0-9]+$'
+      and not exists (
+        select 1
+        from ${notice} n
+        where n.id = (${notifications.data}->>'noticeId')::int
+      )
+    )`,
+  ];
+
+  // Notice removal notifications are admin-only regardless of stored audience.
+  if (role !== "admin") {
+    baseFilters.push(sql`${notifications.type} <> 'notice_deleted'`);
+  }
+
+  const baseFilter = and(...baseFilters);
 
   if (roleTypeFilter) {
     return and(baseFilter, roleTypeFilter);

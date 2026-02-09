@@ -495,7 +495,7 @@
       <div class="mb-6">
         <h2 class="text-sm font-bold text-slate-900 mb-3">Quick Actions</h2>
         <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {#if userRole !== 'notice_manager'}
+          {#if userRole === 'student' || userRole === 'teacher'}
             <a
               href="/classroom"
               use:route
