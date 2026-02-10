@@ -66,6 +66,7 @@
   let reportModalOpen = $state(false);
   let blockModalOpen = $state(false);
   let profileModalOpen = $state(false);
+  let sellerMenuOpen = $state(false);
 
   let requestMessage = $state("");
   let requestSubmitting = $state(false);
@@ -147,6 +148,18 @@
     }
   });
 
+  $effect(() => {
+    if (!sellerMenuOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".seller-menu-container")) {
+        sellerMenuOpen = false;
+      }
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  });
+
   const bookQuery = createQuery(() => ({
     queryKey: ["book-listing", bookId],
     queryFn: async () => {
@@ -179,7 +192,8 @@
       const sellerId = bookQuery.data?.sellerId;
       if (!sellerId) return null;
       const result = await getBookListings({ sellerId });
-      if (!result.success || !result.data) return { listings: [], totalCount: 0 };
+      if (!result.success || !result.data)
+        return { listings: [], totalCount: 0 };
 
       const listings = (result.data?.listings || []).filter(
         (l) => l.id !== bookId,
@@ -633,7 +647,7 @@
       {@const activeImage = hasImages ? book.images![activeImageIndex] : null}
 
       <section
-        class="mt-4 bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden"
+        class="mt-4 bg-white border border-gray-100 rounded-2xl shadow-sm"
         in:fly={{ y: 12, duration: 260 }}
       >
         <div class="grid grid-cols-1 lg:grid-cols-2">
@@ -753,17 +767,77 @@
                 >
                   View Profile →
                 </button>
-                <button
-                  onclick={() => (reportModalOpen = true)}
-                  class="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-400"
-                  aria-label="More options"
-                >
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"
-                    ><path
-                      d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
-                    /></svg
+                <div class="relative seller-menu-container">
+                  <button
+                    onclick={() => (sellerMenuOpen = !sellerMenuOpen)}
+                    class="p-1.5 hover:bg-slate-100 rounded-lg transition-colors {sellerMenuOpen
+                      ? 'bg-slate-100 text-slate-900'
+                      : 'text-slate-400'}"
+                    aria-label="More options"
                   >
-                </button>
+                    <svg
+                      class="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+                      />
+                    </svg>
+                  </button>
+
+                  {#if sellerMenuOpen}
+                    <div
+                      transition:fly={{ y: 8, duration: 200 }}
+                      class="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-20"
+                    >
+                      <button
+                        onclick={() => {
+                          reportModalOpen = true;
+                          sellerMenuOpen = false;
+                        }}
+                        class="w-full px-4 py-2.5 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition-colors"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        Report Seller
+                      </button>
+                      <button
+                        onclick={() => {
+                          blockModalOpen = true;
+                          sellerMenuOpen = false;
+                        }}
+                        class="w-full px-4 py-2.5 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-3 transition-colors"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                          />
+                        </svg>
+                        Block Seller
+                      </button>
+                    </div>
+                  {/if}
+                </div>
               </div>
             {/if}
           </div>
