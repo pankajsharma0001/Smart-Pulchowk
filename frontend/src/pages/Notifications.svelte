@@ -401,8 +401,12 @@
       (data.thumbnailUrl as string | undefined) ||
       (data.bannerUrl as string | undefined) ||
       (data.attachmentUrl as string | undefined)
-    if (typeof value !== 'string' || value.trim().length === 0) return null
-    return optimizeCloudinaryThumbnailUrl(value, 280, 280)
+    if (typeof value !== 'string') return null
+    const trimmedValue = value.trim()
+    if (trimmedValue.length === 0) return null
+    return isImageUrl(trimmedValue)
+      ? optimizeCloudinaryThumbnailUrl(trimmedValue, 280, 280)
+      : trimmedValue
   }
 
   function isPdfUrl(url: string | null) {
@@ -889,12 +893,14 @@
     {:else}
       <div class="space-y-2">
         {#each loadedNotifications as notification (notification.id)}
+          {@const iconKey = getIconKey(notification)}
           {@const actorAvatarUrl = getActorAvatarUrl(notification)}
           {@const bookThumbUrl = getBookThumbUrl(notification)}
           {@const lostFoundThumbUrl = getLostFoundThumbUrl(notification)}
           {@const mediaUrl = getImageUrl(notification)}
           {@const hasPdfMedia = isPdfUrl(mediaUrl)}
           {@const hasImageMedia = isImageUrl(mediaUrl)}
+          {@const hasNoticePdfMedia = iconKey === 'notice' && hasPdfMedia}
           {@const richText = getRichNotificationText(notification)}
           <a
             use:route
@@ -908,7 +914,7 @@
           >
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-start gap-3">
-                {#if getIconKey(notification) === 'book' && bookThumbUrl}
+                {#if iconKey === 'book' && bookThumbUrl}
                   <div class="relative w-14 h-14 shrink-0">
                     <img
                       src={bookThumbUrl}
@@ -917,7 +923,7 @@
                       loading="lazy"
                     />
                   </div>
-                {:else if getIconKey(notification) === 'lost_found' && lostFoundThumbUrl}
+                {:else if iconKey === 'lost_found' && lostFoundThumbUrl}
                   <div class="relative w-14 h-14 shrink-0">
                     <img
                       src={lostFoundThumbUrl}
@@ -933,7 +939,7 @@
                     class="w-14 h-14 rounded-lg object-cover border border-slate-200 bg-slate-100 shrink-0"
                     loading="lazy"
                   />
-                {:else if hasPdfMedia}
+                {:else if hasNoticePdfMedia}
                   <div
                     class="w-14 h-14 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0"
                   >
@@ -948,7 +954,7 @@
                   <div
                     class="w-14 h-14 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 text-slate-600"
                   >
-                    {#if getIconKey(notification) === 'event'}
+                    {#if iconKey === 'event'}
                       <svg
                         class="w-6 h-6"
                         viewBox="0 0 24 24"
@@ -961,14 +967,14 @@
                         <line x1="8" y1="2" x2="8" y2="6"></line>
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                       </svg>
-                    {:else if getIconKey(notification) === 'book'}
+                    {:else if iconKey === 'book'}
                       <img
                         src="https://cdn-icons-png.flaticon.com/512/5402/5402751.png"
                         alt="Book"
                         class="w-6 h-6 object-contain"
                         loading="lazy"
                       />
-                    {:else if getIconKey(notification) === 'chat'}
+                    {:else if iconKey === 'chat'}
                       <svg
                         class="w-6 h-6"
                         viewBox="0 0 24 24"
@@ -980,7 +986,7 @@
                           d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
                         ></path>
                       </svg>
-                    {:else if getIconKey(notification) === 'notice'}
+                    {:else if iconKey === 'notice'}
                       <svg
                         class="w-6 h-6"
                         viewBox="0 0 24 24"
@@ -995,7 +1001,7 @@
                         <line x1="16" y1="13" x2="8" y2="13"></line>
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                       </svg>
-                    {:else if getIconKey(notification) === 'classroom'}
+                    {:else if iconKey === 'classroom'}
                       <svg
                         class="w-6 h-6"
                         viewBox="0 0 24 24"
@@ -1007,7 +1013,7 @@
                         <path d="M12 6 2 10l10 4 10-4-10-4z"></path>
                         <path d="M6 12v5c0 2 2.5 3 6 3s6-1 6-3v-5"></path>
                       </svg>
-                    {:else if getIconKey(notification) === 'lost_found'}
+                    {:else if iconKey === 'lost_found'}
                       <svg
                         class="w-6 h-6"
                         viewBox="0 0 24 24"
@@ -1101,3 +1107,4 @@
     {/if}
   </div>
 </div>
+

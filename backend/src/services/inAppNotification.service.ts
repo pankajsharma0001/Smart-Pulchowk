@@ -311,6 +311,9 @@ async function enrichNotificationData(rows: Array<{ type: string; data: unknown 
     if (!parseString(data.noticeTitle) && noticeMeta?.title) {
       data.noticeTitle = noticeMeta.title;
     }
+    if (!parseString(data.attachmentUrl) && noticeMeta?.attachmentUrl) {
+      data.attachmentUrl = noticeMeta.attachmentUrl;
+    }
     if (!parseString(data.listingTitle) && listingMeta?.title) {
       data.listingTitle = listingMeta.title;
     }
@@ -962,3 +965,4 @@ export async function markAllNotificationsAsRead(userId: string, role?: UserRole
 
   return { success: true, updated: visibleRows.length };
 }
+
