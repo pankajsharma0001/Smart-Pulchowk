@@ -78,6 +78,7 @@ router.post("/sync-user", requireFirebaseAuth, async (req, res) => {
             where: eq(user.id, authStudentId),
         });
 
+
         if (existingUserById) {
             // User already exists, optionally update their info
             await db
@@ -99,22 +100,12 @@ router.post("/sync-user", requireFirebaseAuth, async (req, res) => {
                 },
             });
 
-            // Send security notification for sign-in from existing user
-            sendToUser(authStudentId, {
-                title: 'New sign-in detected',
-                body: 'Your account was signed in from a mobile device.',
-                data: {
-                    type: 'security_alert',
-                    iconKey: 'general',
-                    ipAddress: req.ip || '',
-                    userAgent: req.headers['user-agent'] || '',
-                },
-            }).catch((error) =>
-                console.error('Failed to send mobile security alert notification (existing):', error),
-            );
-
+            // Suppress notification for existing users to prevent spam on every sync
+            // Only send if we detect a significantly new context if possible, but for now
+            // simpler to just not spam on every sync.
             return;
         }
+
 
         // Check if email is already used by another user
         const existingUserByEmail = await db.query.user.findFirst({
@@ -153,6 +144,20 @@ router.post("/sync-user", requireFirebaseAuth, async (req, res) => {
                     updatedAt: new Date(),
                 });
                 console.log(`[Sync] Created Firebase account link for user ${existingUserByEmail.id}`);
+
+                // ONLY send notification if this is a NEW link
+                sendToUser(existingUserByEmail.id, {
+                    title: 'New sign-in detected',
+                    body: 'Your account was linked and signed in from a new mobile session.',
+                    data: {
+                        type: 'security_alert',
+                        iconKey: 'general',
+                        ipAddress: req.ip || '',
+                        userAgent: req.headers['user-agent'] || '',
+                    },
+                }).catch((error) =>
+                    console.error('Failed to send mobile security alert notification (linking):', error),
+                );
             }
 
             res.json({
@@ -170,21 +175,8 @@ router.post("/sync-user", requireFirebaseAuth, async (req, res) => {
                 },
             });
 
-            // Send security notification for account linking sign-in
-            sendToUser(existingUserByEmail.id, {
-                title: 'New sign-in detected',
-                body: 'Your account was linked and signed in from a new mobile session.',
-                data: {
-                    type: 'security_alert',
-                    iconKey: 'general',
-                    ipAddress: req.ip || '',
-                    userAgent: req.headers['user-agent'] || '',
-                },
-            }).catch((error) =>
-                console.error('Failed to send mobile security alert notification (linking):', error),
-            );
-
             return;
+
         }
 
         // Create new user
