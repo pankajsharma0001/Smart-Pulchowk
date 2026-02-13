@@ -69,7 +69,6 @@
   let profileModalOpen = $state(false);
   let sellerMenuOpen = $state(false);
 
-  
   let confirmModalOpen = $state(false);
   let confirmTitle = $state("");
   let confirmMessage = $state("");
@@ -731,7 +730,7 @@
             class="bg-slate-50/50 p-4 sm:p-6 border-b lg:border-b-0 lg:border-r border-slate-100"
           >
             <div
-              class="group relative h-80 sm:h-96 lg:h-[32rem] w-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex items-center justify-center transition-all hover:shadow-md"
+              class="group relative h-80 sm:h-96 lg:h-128 w-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex items-center justify-center transition-all hover:shadow-md"
             >
               {#if book.edition}
                 <span
@@ -1560,7 +1559,7 @@
                             >
                               <div class="flex items-center gap-3">
                                 <div
-                                  class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-200 flex items-center justify-center text-white"
+                                  class="w-10 h-10 rounded-xl bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-200 flex items-center justify-center text-white"
                                 >
                                   <svg
                                     class="w-6 h-6"
@@ -1626,7 +1625,7 @@
                                     Email
                                   </p>
                                   <p
-                                    class="text-[11px] text-gray-500 truncate max-w-[180px]"
+                                    class="text-[11px] text-gray-500 truncate max-w-45"
                                   >
                                     {c.email}
                                   </p>
@@ -2320,7 +2319,7 @@
       aria-label="Close rating modal"
     ></div>
     <div
-      class="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200"
+      class="relative w-full max-w-lg bg-white rounded-4xl shadow-2xl overflow-hidden border border-slate-200"
       transition:fly={{ y: 20, duration: 400 }}
     >
       <div class="px-8 pt-8 pb-10">
@@ -2328,6 +2327,7 @@
           <h3 class="text-2xl font-black text-[#1e293b] tracking-tight">
             Rate Your Experience
           </h3>
+          <!-- svelte-ignore a11y_consider_explicit_label -->
           <button
             onclick={() => (rateModalOpen = false)}
             class="p-2 hover:bg-slate-100 rounded-full transition-colors"
@@ -2376,6 +2376,7 @@
           </div>
 
           <div class="mb-6">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-bold text-[#1e293b] mb-3">
               Share your experience (optional)
             </label>
@@ -2391,6 +2392,7 @@
           </div>
 
           <div class="mt-8">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-bold text-[#1e293b] mb-4">
               What stood out? (optional)
             </label>
@@ -2615,6 +2617,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
     transition:fade={{ duration: 200 }}
   >
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
       class="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
       onclick={() => (profileModalOpen = false)}
@@ -2625,7 +2628,7 @@
       class="relative w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
       in:fly={{ y: 20, duration: 400 }}
     >
-     <!-- Header -->
+      <!-- Header -->
       <button
         onclick={() => (profileModalOpen = false)}
         class="absolute top-4 right-4 z-50 p-2 bg-black/20 hover:bg-black/30 backdrop-blur-md rounded-full text-white transition-all active:scale-90"
@@ -2646,12 +2649,12 @@
       </button>
 
       <div class="flex-1 overflow-y-auto custom-scrollbar">
-     <!-- Content -->
+        <!-- Content -->
         <div class="relative">
           <div
-            class="h-32 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500"
+            class="h-32 bg-linear-to-r from-indigo-600 via-purple-600 to-pink-500"
           ></div>
-         <!-- Avatar -->
+          <!-- Avatar -->
           <div class="absolute -bottom-12 left-8 z-10">
             <div class="p-1.5 bg-white rounded-full shadow-2xl">
               {#if book?.seller?.image}
@@ -2778,7 +2781,7 @@
                       >
                         <div class="flex gap-3">
                           <div
-                            class="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0"
+                            class="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0"
                           >
                             {#if item.images?.[0]}
                               <img
@@ -2936,7 +2939,7 @@
                     <p class="text-sm font-bold text-gray-900">
                       No reviews yet
                     </p>
-                    <p class="text-xs text-gray-400 mt-1 max-w-[200px] mx-auto">
+                    <p class="text-xs text-gray-400 mt-1 max-w-50 mx-auto">
                       Be the first to rate this seller after a successful
                       transaction!
                     </p>
@@ -3028,7 +3031,7 @@
                 aria-label="Toggle wishlist"
               >
                 <svg
-                  class="w-4 h-4 sm:w-5 h-5 transition-all {savedState
+                  class="w-4 h-4 sm:w-5 transition-all {savedState
                     ? 'fill-rose-500 text-rose-500 scale-110'
                     : 'group-hover:scale-110'}"
                   fill={savedState ? "currentColor" : "none"}
@@ -3070,7 +3073,7 @@
                 style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);"
               >
                 <svg
-                  class="w-4 h-4 sm:w-5 h-5"
+                  class="w-4 h-4 sm:w-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -3091,7 +3094,7 @@
                 style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);"
               >
                 <svg
-                  class="w-4 h-4 sm:w-5 h-5"
+                  class="w-4 h-4 sm:w-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -3121,7 +3124,6 @@
   </div>
 {/if}
 
-
 {#if confirmModalOpen}
   <div
     class="fixed inset-0 z-100 flex items-center justify-center p-4 sm:p-6"
@@ -3137,9 +3139,8 @@
       aria-label="Close modal"
     ></div>
 
-  
     <div
-      class="relative w-full max-w-sm bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100"
+      class="relative w-full max-w-sm bg-white rounded-4xl shadow-2xl overflow-hidden border border-slate-100"
       transition:fly={{ y: 20, duration: 400 }}
     >
       <div class="p-8 text-center">
@@ -3153,16 +3154,46 @@
               : 'bg-indigo-50 border-indigo-100 text-indigo-500'}"
         >
           {#if confirmType === "danger"}
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <svg
+              class="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
           {:else if confirmType === "warning"}
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              class="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
           {:else}
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              class="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           {/if}
         </div>
@@ -3205,11 +3236,11 @@
   <div
     class="fixed {showStickyBar
       ? 'bottom-24 sm:bottom-28'
-      : 'bottom-6 sm:bottom-8'} left-1/2 -translate-x-1/2 z-[60] px-5 py-3.5 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-white/10 text-white font-semibold text-[13px] shadow-2xl flex items-center gap-3.5 transition-all duration-500 w-[92%] max-w-sm sm:w-auto"
+      : 'bottom-6 sm:bottom-8'} left-1/2 -translate-x-1/2 z-60 px-5 py-3.5 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-white/10 text-white font-semibold text-[13px] shadow-2xl flex items-center gap-3.5 transition-all duration-500 w-[92%] max-w-sm sm:w-auto"
     transition:fly={{ y: 32, duration: 600, easing: quintOut }}
   >
     <div
-      class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20"
+      class="shrink-0 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20"
     >
       <svg
         class="w-5 h-5 text-emerald-400"
@@ -3252,11 +3283,11 @@
   <div
     class="fixed {showStickyBar
       ? 'bottom-24 sm:bottom-28'
-      : 'bottom-6 sm:bottom-8'} left-1/2 -translate-x-1/2 z-[60] px-5 py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl border border-rose-100 text-rose-600 font-semibold text-[13px] shadow-2xl flex items-center gap-3.5 transition-all duration-500 w-[92%] max-w-sm sm:w-auto"
+      : 'bottom-6 sm:bottom-8'} left-1/2 -translate-x-1/2 z-60 px-5 py-3.5 rounded-2xl bg-white/95 backdrop-blur-xl border border-rose-100 text-rose-600 font-semibold text-[13px] shadow-2xl flex items-center gap-3.5 transition-all duration-500 w-[92%] max-w-sm sm:w-auto"
     transition:fly={{ y: 32, duration: 600, easing: quintOut }}
   >
     <div
-      class="flex-shrink-0 w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center border border-rose-100"
+      class="shrink-0 w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center border border-rose-100"
     >
       <svg
         class="w-5 h-5"
