@@ -160,6 +160,23 @@ export const sendToTopic = async (
         ),
       )
     }
+
+    if (topic === 'admins') {
+      sideEffects.push(
+        createInAppNotificationForAudience({
+          audience: 'admins',
+          type: payload.data?.type || 'admin_alert',
+          title: derivedTitle,
+          body: derivedBody,
+          data: { iconKey: 'admin', ...payload.data },
+        }).catch((error) =>
+          console.error(
+            'Failed to create in-app audience notification:',
+            error,
+          ),
+        ),
+      )
+    }
   }
 
   if (!isFirebaseInitialized) {
