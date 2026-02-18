@@ -402,7 +402,7 @@ export async function createNotice(req: AuthedRequest, res: Response) {
         console.error('Failed to create notice in-app notification:', error),
       ),
 
-      sendToTopic('announcements', {
+      sendToTopic('notices', {
         title: 'New Notice Published',
         body: title,
         data: {
@@ -521,7 +521,7 @@ export async function updateNotice(req: AuthedRequest, res: Response) {
         console.error('Failed to create notice update notification:', error),
       ),
 
-      sendToTopic('announcements', {
+      sendToTopic('notices', {
         title: 'Notice Updated',
         body: updated.title,
         data: {
