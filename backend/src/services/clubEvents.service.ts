@@ -181,6 +181,13 @@ export async function getClubs() {
                     AND (${events.eventStartTime} > NOW() OR (${events.eventStartTime} <= NOW() AND ${events.eventEndTime} >= NOW()))
                     THEN ${events.id}
                     END)`,
+        completedEvents: sql<number>`
+                    COUNT(DISTINCT CASE 
+                    WHEN ${events.status} IS NULL 
+                    AND ${events.eventEndTime} < NOW()
+                    THEN ${events.id} 
+                    END)
+                `,
         totalParticipants: sql<number>`COALESCE(SUM(${events.currentParticipants}), 0)`,
       })
       .from(clubs)
