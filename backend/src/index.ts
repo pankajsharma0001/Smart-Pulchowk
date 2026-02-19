@@ -132,6 +132,14 @@ async function ensureRuntimeSchema() {
        OR NOT ("notification_preferences" ? 'chatAlerts')
        OR NOT ("notification_preferences" ? 'adminAlerts')
   `)
+  await db.execute(sql`
+    ALTER TABLE "notification_reads"
+    ADD COLUMN IF NOT EXISTS "deleted_at" timestamp
+  `)
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS "notification_reads_user_deleted_idx"
+    ON "notification_reads" ("user_id", "deleted_at")
+  `)
 
   await db.execute(sql`
     DO $$
