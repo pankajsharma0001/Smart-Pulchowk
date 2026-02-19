@@ -20,6 +20,7 @@ import {
   bookPurchaseRequests,
 } from '../models/book_buy_sell-schema.js'
 import { sendToTopic, sendToTopicFiltered } from './notification.service.js'
+import { createInAppNotificationForAudience } from './inAppNotification.service.js'
 import { unwrapOne } from '../lib/type-utils.js'
 import { userBlocks } from '../models/trust-schema.js'
 
@@ -88,8 +89,6 @@ export const createBookListing = async (
       })
       .returning()
 
-    // Trigger push notification for new book listing
-    // Filtering: Don't send to admin roles and don't send to the seller themselves
     await sendToTopicFiltered(
       'books',
       {
@@ -109,6 +108,22 @@ export const createBookListing = async (
         excludeRoles: ['admin'],
       },
     )
+
+    // Trigger in-app notification (audience 'all' but preference-filtered on server)
+    await createInAppNotificationForAudience({
+      audience: 'all',
+      type: 'book_listed',
+      title: 'New Book Listed!',
+      body: `${data.title} is now available in the marketplace.`,
+      data: {
+        type: 'book_listed',
+        bookId: listing.id,
+        listingId: listing.id,
+        listingTitle: data.title,
+        sellerId: sellerId,
+        iconKey: 'book',
+      },
+    }).catch(console.error)
 
     return {
       success: true,

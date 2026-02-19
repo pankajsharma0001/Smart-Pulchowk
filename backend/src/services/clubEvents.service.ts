@@ -16,8 +16,8 @@ import {
 import { UPLOAD_CONSTANTS, isValidImageUrl } from "../config/cloudinary.js";
 import { unwrapOne } from "../lib/type-utils.js";
 import { deriveEventStatus } from "../lib/event-status.js";
-import { createInAppNotificationsForUsers } from "./inAppNotification.service.js";
-import { sendToUser } from "./notification.service.js";
+import { createInAppNotificationsForUsers, createInAppNotificationForAudience } from "./inAppNotification.service.js";
+import { sendToUser, sendToTopicFiltered } from "./notification.service.js";
 
 const { MAX_FILE_SIZE, ALLOWED_TYPES } = UPLOAD_CONSTANTS;
 
@@ -923,6 +923,10 @@ export async function updateEvent(
       };
     }
 
+    const oldStartTime = event.eventStartTime?.getTime();
+    const oldEndTime = event.eventEndTime?.getTime();
+    const oldDeadline = event.registrationDeadline?.getTime();
+
     // Prepare update data
     const updateData: any = {
       updatedAt: new Date(),
@@ -951,6 +955,62 @@ export async function updateEvent(
       .set(updateData)
       .where(eq(events.id, eventId))
       .returning();
+
+    // Check if time-sensitive fields changed
+    const timeChanged =
+      (updateData.eventStartTime &&
+        updateData.eventStartTime.getTime() !== oldStartTime) ||
+      (updateData.eventEndTime &&
+        updateData.eventEndTime.getTime() !== oldEndTime) ||
+      (updateData.registrationDeadline &&
+        updateData.registrationDeadline.getTime() !== oldDeadline);
+
+    if (timeChanged) {
+      const notificationPayload = {
+        title: "Event Update",
+        body: `Schedule for "${updatedEvent.title}" has been updated.`,
+        data: {
+          eventId: eventId.toString(),
+          eventTitle: updatedEvent.title,
+          type: "event_updated",
+          iconKey: "event",
+          publisherId: authId,
+          ...(updatedEvent.bannerUrl ? { thumbnailUrl: updatedEvent.bannerUrl } : {}),
+        },
+      };
+
+      // 1. Notify Registered Users
+      const registrations = await db.query.eventRegistrations.findMany({
+        where: and(
+          eq(eventRegistrations.eventId, eventId),
+          eq(eventRegistrations.status, "registered"),
+        ),
+        columns: { userId: true },
+      });
+
+      if (registrations.length > 0) {
+        await createInAppNotificationsForUsers({
+          userIds: registrations.map((r) => r.userId),
+          type: "event_updated",
+          title: notificationPayload.title,
+          body: notificationPayload.body,
+          data: notificationPayload.data,
+        });
+
+        await Promise.all(
+          registrations.map((reg) =>
+            sendToUser(reg.userId, notificationPayload),
+          ),
+        );
+      }
+
+      // 2. Broadcast to general events topic (excluding the editor)
+      await sendToTopicFiltered(
+        "events",
+        notificationPayload,
+        { excludeUserIds: [authId] }
+      );
+    }
 
     return {
       success: true,

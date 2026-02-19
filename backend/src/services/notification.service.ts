@@ -253,18 +253,40 @@ export const sendToTopicFiltered = async (
     payload.body ||
     (typeof payload.data?.body === 'string' ? payload.data.body : undefined)
 
-  if (derivedTitle && derivedBody && topic === 'books') {
-    sideEffects.push(
-      createInAppNotificationForAudience({
-        audience: 'all',
-        type: 'book_listed',
-        title: derivedTitle,
-        body: derivedBody,
-        data: { iconKey: 'book', ...payload.data },
-      }).catch((error) =>
-        console.error('Failed to create in-app audience notification:', error),
-      ),
-    )
+  if (derivedTitle && derivedBody) {
+    if (topic === 'events') {
+      sideEffects.push(
+        createInAppNotificationForAudience({
+          audience: 'all',
+          type: 'event_published',
+          title: derivedTitle,
+          body: derivedBody,
+          data: { iconKey: 'event', ...payload.data },
+        }).catch((error) =>
+          console.error(
+            'Failed to create in-app audience notification:',
+            error,
+          ),
+        ),
+      )
+    }
+
+    if (topic === 'books') {
+      sideEffects.push(
+        createInAppNotificationForAudience({
+          audience: 'all',
+          type: 'book_listed',
+          title: derivedTitle,
+          body: derivedBody,
+          data: { iconKey: 'book', ...payload.data },
+        }).catch((error) =>
+          console.error(
+            'Failed to create in-app audience notification:',
+            error,
+          ),
+        ),
+      )
+    }
   }
 
   // If no exclusions, fallback to standard topic send
@@ -436,15 +458,13 @@ export const sendToUser = async (
   }
 }
 
-/**
- * @deprecated Use sendToTopic or sendToUser instead
- */
 export const sendEventNotification = async (event: any) => {
   const creatorId =
     typeof event?.creatorId === 'string' && event.creatorId.trim().length > 0
       ? event.creatorId
       : undefined
-  return sendToTopic('events', {
+
+  return sendToTopicFiltered('events', {
     title: 'New Event Published!',
     body: `${event.title} is now open for registration.`,
     data: {
@@ -460,5 +480,7 @@ export const sendEventNotification = async (event: any) => {
           }
         : {}),
     },
+  }, {
+    excludeUserIds: creatorId ? [creatorId] : []
   })
 }
