@@ -6,6 +6,7 @@ import {
 } from "../models/book_buy_sell-schema.js";
 import { user } from "../models/auth-schema.js";
 import { sendToUser } from "./notification.service.js";
+import { createInAppNotificationForUser } from "./inAppNotification.service.js";
 import { unwrapOne } from "../lib/type-utils.js";
 import { isUserBlockedBetween } from "./trust.service.js";
 
@@ -400,7 +401,7 @@ export const cancelPurchaseRequest = async (
     });
 
     if (listing) {
-      await sendToUser(listing.sellerId, {
+      const payload = {
         title: "Purchase request cancelled",
         body: `${buyer?.name || "A buyer"} cancelled a request for "${listing.title}".`,
         data: {
@@ -416,7 +417,17 @@ export const cancelPurchaseRequest = async (
             ? { thumbnailUrl: listing.images[0].imageUrl }
             : {}),
         },
-      });
+      };
+
+      await sendToUser(listing.sellerId, payload);
+
+      await createInAppNotificationForUser({
+        userId: listing.sellerId,
+        type: payload.data.type,
+        title: payload.title,
+        body: payload.body,
+        data: payload.data as any,
+      }).catch(console.error);
     }
 
     return { success: true, message: "Request cancelled." };
@@ -464,7 +475,7 @@ export const deletePurchaseRequest = async (
     const counterpartId =
       request.buyerId === userId ? listing.sellerId : request.buyerId;
     if (counterpartId) {
-      await sendToUser(counterpartId, {
+      const payload = {
         title: "Purchase request removed",
         body: `A purchase request for "${listing.title}" was removed.`,
         data: {
@@ -473,7 +484,17 @@ export const deletePurchaseRequest = async (
           listingId: listing.id.toString(),
           iconKey: "book",
         },
-      });
+      };
+
+      await sendToUser(counterpartId, payload);
+
+      await createInAppNotificationForUser({
+        userId: counterpartId,
+        type: payload.data.type,
+        title: payload.title,
+        body: payload.body,
+        data: payload.data as any,
+      }).catch(console.error);
     }
 
     return { success: true, message: "Request deleted." };
