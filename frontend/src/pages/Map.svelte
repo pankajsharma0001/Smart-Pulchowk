@@ -1085,31 +1085,52 @@
   const loadIcons = async () => {
     if (!map) return;
 
-    await Promise.all(
+    await Promise.allSettled(
       icons.map(async ({ name, url, width }) => {
-        const image = await map.loadImage(url);
-        if (!map.hasImage(name))
-          map.addImage(name, resizeImage(image.data, width), {
-            pixelRatio: 1,
+        if (map.hasImage(name)) return;
+
+        try {
+          const image = await map.loadImage(url);
+          if (!map.hasImage(name))
+            map.addImage(name, resizeImage(image.data, width), {
+              pixelRatio: 1,
+            });
+        } catch (error) {
+          console.warn(`Failed to load map icon "${name}", using fallback.`, {
+            url,
+            error,
           });
+
+          if (!map.hasImage(name)) {
+            map.addImage(name, createFallbackIcon(width), {
+              pixelRatio: 1,
+            });
+          }
+        }
       }),
     );
     isLoaded = true;
   };
 
   async function handleMapLoad() {
-    await loadIcons();
-    if (map) {
-      map.setCooperativeGestures(false);
-      map.scrollZoom.enable();
-      map.dragPan.enable();
-      map.doubleClickZoom.enable();
-      map.boxZoom.enable();
-      map.keyboard.enable();
-      map.touchZoomRotate.enable();
-      map.touchPitch.enable();
+    try {
+      await loadIcons();
+    } catch (error) {
+      console.error("Map icon loading failed:", error);
+      isLoaded = true;
+    } finally {
+      if (map) {
+        map.setCooperativeGestures(false);
+        map.scrollZoom.enable();
+        map.dragPan.enable();
+        map.doubleClickZoom.enable();
+        map.boxZoom.enable();
+        map.keyboard.enable();
+        map.touchZoomRotate.enable();
+        map.touchPitch.enable();
+      }
+      tryApplyPendingFocusRequest();
     }
-    tryApplyPendingFocusRequest();
   }
 
   function resizeImage(image: ImageBitmap | HTMLImageElement, width = 25) {
@@ -1129,6 +1150,37 @@
       return imageData;
     }
     return image;
+  }
+
+  function createFallbackIcon(width = 25) {
+    const height = Math.round(width * 1.5);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return new ImageData(width, height);
+    }
+
+    const radius = Math.max(4, Math.round(width * 0.34));
+    const centerX = width / 2;
+    const centerY = radius + 1;
+
+    ctx.fillStyle = "#0ea5e9";
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, Math.PI, 0);
+    ctx.quadraticCurveTo(width - 1, centerY + radius, centerX, height - 1);
+    ctx.quadraticCurveTo(1, centerY + radius, centerX - radius, centerY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, Math.max(2, Math.round(radius * 0.42)), 0, Math.PI * 2);
+    ctx.fill();
+
+    return ctx.getImageData(0, 0, width, height);
   }
 
   const filteredSuggestions = $derived(
